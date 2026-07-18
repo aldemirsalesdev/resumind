@@ -1,6 +1,6 @@
 {
   "name": "Resumind | Análise ATS",
-  "description": "Ferramenta de extração, análise e otimização de currículos para máxima compatibilidade com sistemas de recrutamento (ATS).",
+  "description": "Ferramenta de extração, análise e otimização de currículos para máxima compatibilidade com sistemas de recrutamento ATS.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
