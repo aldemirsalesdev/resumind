@@ -120,7 +120,8 @@ export default function Dashboard() {
           
           resumesData.forEach((r) => {
             const ad = analysesMap.get(r.id);
-            r.score = ad?.score || r.atsScore || r.score || 0;
+            // Use the exact stored score in the resume document (atsScore) or the analysis document (score)
+            r.score = r.atsScore || ad?.score || r.score || 0;
           });
         }
 

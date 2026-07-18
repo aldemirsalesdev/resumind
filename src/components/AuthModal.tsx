@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, User, Ghost, VenetianMask } from "lucide-react";
 import { auth, googleProvider, isFirebaseConfigured, missingOrPlaceholderKeys } from "../lib/firebase";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, sendPasswordResetEmail, fetchSignInMethodsForEmail, updateProfile } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, sendPasswordResetEmail, fetchSignInMethodsForEmail, updateProfile } from "firebase/auth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -27,22 +27,24 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
     setLoading(true);
     setError(null);
     try {
+      // Sempre usar signInWithPopup para evitar que a página principal seja redirecionada para a tela preta de transição.
+      // O popup abre instantaneamente e fecha logo após a autenticação.
       await signInWithPopup(auth, googleProvider);
       onClose();
     } catch (err: any) {
       console.error("Google Auth error:", err);
-      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
-        if (err.code === "auth/operation-not-allowed") {
-          setError("O provedor Google não está ativado nas configurações do seu projeto Firebase. Ative-o em Authentication > Sign-in method.");
-        } else if (err.code === "auth/unauthorized-domain") {
-          setError(`Domínio não autorizado: Adicione o domínio "${window.location.hostname}" nas configurações do seu Console do Firebase (Vá em Authentication > Settings/Configurações > Authorized domains/Domínios autorizados).`);
-        } else if (err.code === "auth/popup-blocked") {
-          setError("O pop-up de login foi bloqueado pelo navegador. Libere a exibição de pop-ups ou abra o link em uma nova aba separada.");
-        } else if (err.code === "auth/web-storage-unsupported" || err.message?.includes("web storage") || err.message?.includes("cookie")) {
-          setError("Seu navegador restringiu cookies de terceiros no visualizador do AI Studio. Por favor, abra o aplicativo em uma nova aba para logar com o Google, ou use login com E-mail e Senha.");
-        } else {
-          setError(err.message || "Erro ao autenticar com o Google. Se estiver no visualizador do AI Studio, experimente abrir o link em uma nova aba.");
-        }
+      if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        setError("O login com Google foi cancelado ou bloqueado pelo seu navegador (ex: Brave Shields, bloqueador de pop-ups ou restrição de cookies). Você pode fechar aquela janela e tentar novamente, ou usar o login com E-mail e Senha abaixo.");
+      } else if (err.code === "auth/operation-not-allowed") {
+        setError("O provedor Google não está ativado nas configurações do seu projeto Firebase. Ative-o em Authentication > Sign-in method.");
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(`Domínio não autorizado: Adicione o domínio "${window.location.hostname}" nas configurações do seu Console do Firebase (Vá em Authentication > Settings/Configurações > Authorized domains/Domínios autorizados).`);
+      } else if (err.code === "auth/popup-blocked") {
+        setError("O pop-up de login foi bloqueado pelo navegador. Libere a exibição de pop-ups ou abra o link em uma nova aba separada.");
+      } else if (err.code === "auth/web-storage-unsupported" || err.message?.includes("web storage") || err.message?.includes("cookie")) {
+        setError("Seu navegador restringiu cookies de terceiros no visualizador do AI Studio. Por favor, abra o aplicativo em uma nova aba para logar com o Google, ou use login com E-mail e Senha.");
+      } else {
+        setError(err.message || "Erro ao autenticar com o Google. Se estiver no visualizador do AI Studio, experimente abrir o link em uma nova aba.");
       }
     } finally {
       setLoading(false);

@@ -97,10 +97,52 @@ export const StandardATSPreview = ({ data }: StandardATSPreviewProps) => {
     return clean;
   };
 
+  const formatGithubForPreview = (github: string) => {
+    if (!github) return "";
+    let clean = github.trim();
+    clean = clean.replace(/^[\s|/\\•\-–—,]+|[\s|/\\•\-–—,]+$/g, "");
+    clean = clean.replace(/^(https?:\/\/)?(www\.)?/, "");
+    if (!clean.toLowerCase().includes("github")) {
+      const handle = clean.replace(/^\//, "");
+      clean = `github.com/${handle}`;
+    }
+    return clean;
+  };
+
+  const formatWebsiteForPreview = (website: string) => {
+    if (!website) return "";
+    let clean = website.trim();
+    clean = clean.replace(/^[\s|/\\•\-–—,]+|[\s|/\\•\-–—,]+$/g, "");
+    const lower = clean.toLowerCase();
+    if (
+      lower.startsWith("portfólio:") ||
+      lower.startsWith("portfolio:") ||
+      lower.startsWith("site:") ||
+      lower.startsWith("website:")
+    ) {
+      return clean;
+    }
+    let displayUrl = clean;
+    if (displayUrl.match(/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/)) {
+      displayUrl = displayUrl.replace(/^(https?:\/\/)?(www\.)?/, "");
+    }
+    return `Portfólio: ${displayUrl}`;
+  };
+
   const personalInfo = {
     ...rawPersonalInfo,
     linkedin: rawPersonalInfo.linkedin
       ? formatLinkedinForPreview(rawPersonalInfo.linkedin)
+      : "",
+    github: rawPersonalInfo.github
+      ? formatGithubForPreview(rawPersonalInfo.github)
+      : (rawPersonalInfo.website?.toLowerCase().includes("github.com")
+          ? formatGithubForPreview(rawPersonalInfo.website)
+          : ""),
+    website: rawPersonalInfo.website
+      ? (rawPersonalInfo.website?.toLowerCase().includes("github.com")
+          ? ""
+          : formatWebsiteForPreview(rawPersonalInfo.website))
       : "",
   };
 
@@ -134,7 +176,7 @@ export const StandardATSPreview = ({ data }: StandardATSPreviewProps) => {
 
     const rawLine2 = [
       sanitizeContactField(personalInfo.linkedin),
-      sanitizeContactField(personalInfo.github || (personalInfo.website?.includes("github.com") ? personalInfo.website : null)),
+      sanitizeContactField(personalInfo.github),
       sanitizeContactField(personalInfo.website),
     ];
 

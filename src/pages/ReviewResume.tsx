@@ -11,6 +11,7 @@ import {
   X,
   Loader2,
   Info,
+  Lightbulb,
 } from "lucide-react";
 import { analyzeGrammarAndMissingInfo } from "../services/geminiService";
 import { AutoScaledPreview } from "../components/AutoScaledPreview";
@@ -72,7 +73,7 @@ const mapMissingInfoToFriendlyText = (info: string): string => {
     normalized.includes("portfólio") ||
     normalized.includes("website")
   ) {
-    return "Portfólio ou Website pessoal";
+    return "Portfólio, site pessoal ou redes profissionais";
   }
   if (normalized.includes("linkedin")) {
     return "Link do perfil do LinkedIn";
@@ -954,36 +955,7 @@ export default function ReviewResume() {
           <div className="flex flex-col gap-8">
             {reviewResult && (
               <div className="flex flex-col gap-6">
-                {needsUpdate && (
-                  <div className="border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 text-amber-800 dark:text-amber-200 p-4 md:p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={20} />
-                      <div className="flex flex-col gap-1">
-                        <span className="font-bold text-sm">Seu currículo foi alterado desde a última análise</span>
-                        <p className="text-xs dark:text-neutral-400 text-slate-500 leading-relaxed">
-                          As alterações feitas no currículo ainda não foram processadas para atualizar sua pontuação de compatibilidade ATS e o feedback ortográfico detalhado.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleUpdateAnalysis}
-                      disabled={isUpdatingAnalysis}
-                      className="shrink-0 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/60 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm self-end sm:self-center cursor-pointer"
-                    >
-                      {isUpdatingAnalysis ? (
-                        <>
-                          <Loader2 className="animate-spin" size={14} />
-                          <span>Analisando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw size={14} />
-                          <span>Atualizar análise</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+
                 {/* ATS Score Card */}
                 <div className="border dark:border-neutral-800 border-slate-200 rounded-xl dark:bg-[#111111] bg-white p-5 md:p-6 w-full flex flex-col md:flex-row items-center gap-6 justify-between shadow-sm text-center md:text-left">
                   <div className="flex flex-col gap-1 max-w-[500px]">
@@ -1029,46 +1001,106 @@ export default function ReviewResume() {
                       <AlertCircle className="text-amber-500" size={20} />{" "}
                       Correções Rápidas Sugeridas
                     </h3>
-                    {reviewResult.atsAnalysis?.feedback?.some(
+                    {((reviewResult.atsAnalysis?.feedback?.some(
                       (f: any) => f.type === "error" || f.type === "warning" || f.type === "info",
-                    ) ? (
+                    )) || (reviewResult.missingInfo && reviewResult.missingInfo.filter(
+                      (e: string) =>
+                        !e.toLowerCase().includes("string") &&
+                        !e.toLowerCase().includes("array") &&
+                        !e.toLowerCase().includes("json"),
+                    ).length > 0)) ? (
                       <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
-                        {reviewResult.atsAnalysis?.feedback
-                          ?.filter(
-                            (f: any) =>
-                              f.type === "error" || f.type === "warning" || f.type === "info",
-                          )
-                          .sort((a: any, b: any) => {
-                            const typePriority: Record<string, number> = { "error": 1, "warning": 2, "info": 3, "success": 4 };
-                            return typePriority[a.type] - typePriority[b.type];
-                          })
-                          .map((f: any, i: number) => {
-                            const isError = f.type === "error";
+                        {(() => {
+                          const groupedFeedback: Record<string, { type: string; messages: string[] }> = {};
+                          
+                          // 1. Inserir feedbacks da IA
+                          reviewResult.atsAnalysis?.feedback
+                            ?.filter(
+                              (f: any) =>
+                                f.type === "error" || f.type === "warning" || f.type === "info",
+                            )
+                            .forEach((f: any) => {
+                              const category = f.category || (f.type === "error" ? "Correção Crítica" : "Aviso de Melhoria");
+                              if (!groupedFeedback[category]) {
+                                groupedFeedback[category] = {
+                                  type: f.type,
+                                  messages: []
+                                };
+                              }
+                              if (!groupedFeedback[category].messages.includes(f.message)) {
+                                groupedFeedback[category].messages.push(f.message);
+                              }
+                            });
+
+                          // 2. Inserir recomendações de informações ausentes (missingInfo)
+                          if (reviewResult.missingInfo) {
+                            const filtered = reviewResult.missingInfo.filter(
+                              (e: string) =>
+                                !e.toLowerCase().includes("string") &&
+                                !e.toLowerCase().includes("array") &&
+                                !e.toLowerCase().includes("json"),
+                            );
+                            if (filtered.length > 0) {
+                              const category = "Recomendações";
+                              if (!groupedFeedback[category]) {
+                                groupedFeedback[category] = {
+                                  type: "warning",
+                                  messages: []
+                                };
+                              }
+                              filtered.forEach((err: string) => {
+                                const msg = mapMissingInfoToFriendlyText(err);
+                                if (!groupedFeedback[category].messages.includes(msg)) {
+                                  groupedFeedback[category].messages.push(msg);
+                                }
+                              });
+                            }
+                          }
+
+                          // 3. Ordenar categorias de forma determinística
+                          const categoryPriority = (catName: string): number => {
+                            const name = catName.toLowerCase();
+                            if (name.includes("crític") || name.includes("critic")) return 1;
+                            if (name.includes("atenç") || name.includes("atenc")) return 2;
+                            if (name.includes("melhoria")) return 3;
+                            if (name.includes("sugest")) return 4;
+                            if (name.includes("recomend")) return 5;
+                            return 10;
+                          };
+
+                          const sortedEntries = Object.entries(groupedFeedback).sort((a, b) => {
+                            return categoryPriority(a[0]) - categoryPriority(b[0]);
+                          });
+
+                          return sortedEntries.map(([category, data]: [string, any], i: number) => {
+                            const isError = data.type === "error";
+                            const isSuggestionOrRecommendation = category.toLowerCase().includes("sugest") || category.toLowerCase().includes("recomend");
+                            const IconComponent = isSuggestionOrRecommendation ? Lightbulb : AlertCircle;
+
                             return (
                               <div
-                                key={`feedback-${i}`}
-                                className={cn(
-                                  "p-4 rounded-xl border text-sm flex gap-3 transition-all",
-                                  isError
-                                    ? "bg-red-500/5 border-red-500/10 dark:border-red-500/20 text-red-950 dark:text-red-200"
-                                    : f.type === "info"
-                                    ? "bg-blue-500/5 border-blue-500/10 dark:border-blue-500/20 text-blue-950 dark:text-blue-200"
-                                    : "bg-amber-500/5 border-amber-500/10 dark:border-amber-500/20 text-amber-950 dark:text-amber-200"
-                                )}
+                                key={`grouped-feedback-${i}`}
+                                className="p-4 rounded-xl border text-sm flex gap-3 transition-all bg-amber-500/5 border-amber-500/10 dark:border-amber-500/20 text-amber-950 dark:text-amber-200"
                               >
-                                <span className={cn(
-                                  "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                  isError ? "bg-red-500" : f.type === "info" ? "bg-blue-500" : "bg-amber-500"
-                                )} />
+                                <IconComponent className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" size={18} />
                                 <div className="flex-1 leading-relaxed">
-                                  <span className="font-semibold block mb-1">
-                                    {f.category || (isError ? "Correção Crítica" : "Aviso de Melhoria")}
+                                  <span className="font-semibold block mb-1.5">
+                                    {category}
                                   </span>
-                                  <p className="dark:text-neutral-300 text-slate-700">{f.message}</p>
+                                  {data.messages.length === 1 ? (
+                                    <p className="dark:text-neutral-300 text-slate-700">{data.messages[0]}</p>
+                                  ) : (
+                                    <ul className="list-disc pl-4 space-y-1.5 dark:text-neutral-300 text-slate-700">
+                                      {data.messages.map((msg: string, mIdx: number) => (
+                                        <li key={mIdx}>{msg}</li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </div>
                               </div>
                             );
-                          })}
+                          });
+                        })()}
                       </div>
                     ) : (
                       <div className="text-emerald-500 text-sm font-medium flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">
@@ -1081,11 +1113,11 @@ export default function ReviewResume() {
                   {/* Missing Info checklist card */}
                   <div className="border dark:border-neutral-800 border-slate-200 rounded-xl dark:bg-[#111111] bg-white p-5 md:p-6 flex flex-col gap-4 shadow-sm">
                     <h3 className="font-bold text-lg flex items-center gap-2 dark:text-white text-slate-900">
-                      <AlertCircle className="text-amber-500" size={20} />{" "}
+                      <CheckCircle2 className="text-emerald-500" size={20} />{" "}
                       Checklist de Informações
                     </h3>
                     
-                    {reviewResult.atsAnalysis?.score >= 75 && (
+                    {reviewResult.atsAnalysis?.score >= 75 ? (
                       <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-950 dark:text-emerald-200 text-sm flex gap-3 items-start shadow-sm">
                         <CheckCircle2 className="text-emerald-500 mt-0.5 shrink-0" size={18} />
                         <div className="flex-1 leading-relaxed">
@@ -1097,47 +1129,19 @@ export default function ReviewResume() {
                           </p>
                         </div>
                       </div>
-                    )}
-
-                    {reviewResult.missingInfo && reviewResult.missingInfo.length > 0 ? (
-                      <>
-                        <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
-                          {reviewResult.missingInfo
-                            .filter(
-                              (e: string) =>
-                                !e.toLowerCase().includes("string") &&
-                                !e.toLowerCase().includes("array") &&
-                                !e.toLowerCase().includes("json"),
-                            )
-                            .map((err: string, i: number) => (
-                              <div
-                                key={i}
-                                className="p-4 rounded-xl border bg-amber-500/5 border-amber-500/10 dark:border-amber-500/20 text-amber-950 dark:text-amber-200 text-sm flex gap-3"
-                              >
-                                <span className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                                <div className="flex-1 leading-relaxed">
-                                  <span className="font-semibold block mb-1">Recomendação</span>
-                                  <p className="dark:text-neutral-300 text-slate-700">{mapMissingInfoToFriendlyText(err)}</p>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-
-                        <div className="p-3.5 rounded-xl border border-blue-500/10 dark:border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/5 text-slate-600 dark:text-neutral-400 text-xs leading-relaxed flex gap-2.5 items-start">
-                          <Info className="text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" size={16} />
-                          <div>
-                            <span className="font-semibold text-slate-900 dark:text-neutral-200 block mb-1">Dica sobre os itens recomendados:</span>
-                            Os itens listados acima (como <strong className="font-medium text-slate-800 dark:text-neutral-200">portfólio, site pessoal ou redes profissionais</strong>) são excelentes para garantir a pontuação máxima nos robôs de triagem. Porém, se você não tiver ou não precisar de algum deles no momento (como um site próprio), <strong className="font-medium text-slate-800 dark:text-neutral-200">não se preocupe!</strong> Seu currículo já está excelente e perfeitamente funcional para envio.
-                          </div>
-                        </div>
-                      </>
                     ) : (
-                      !(reviewResult.atsAnalysis?.score >= 75) && (
-                        <div className="text-emerald-500 text-sm font-medium flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">
-                          <CheckCircle2 size={18} /> Estrutura de informações completa!
-                        </div>
-                      )
+                      <div className="text-emerald-500 text-sm font-medium flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">
+                        <CheckCircle2 size={18} /> Estrutura de informações completa!
+                      </div>
                     )}
+
+                    <div className="p-4 rounded-xl border border-amber-500/10 dark:border-amber-500/20 bg-amber-500/5 dark:bg-[#15120c] text-slate-700 dark:text-neutral-300 text-sm leading-relaxed flex gap-2.5 items-start">
+                      <Info className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" size={18} />
+                      <div>
+                        <span className="font-semibold text-slate-900 dark:text-neutral-200 block mb-1">Dica sobre os itens recomendados:</span>
+                        Os itens listados (como <strong className="font-medium text-slate-800 dark:text-neutral-200">portfólio, site pessoal ou redes profissionais</strong>) são excelentes para garantir a pontuação máxima nos robôs de triagem. Porém, se você não tiver ou não precisar de algum deles no momento (como um site próprio), <strong className="font-medium text-slate-800 dark:text-neutral-200">não se preocupe!</strong> Seu currículo já está excelente e perfeitamente funcional para envio.
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

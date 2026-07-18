@@ -74,8 +74,35 @@ export const generateStandardATSDocx = async (structured: any, templateId = "sta
     return clean;
   };
 
+  // Formatar o website/portfólio
+  const formatWebsiteForDocx = (website: string) => {
+    if (!website) return "";
+    let clean = website.trim();
+    clean = clean.replace(/^[\s|/\\•\-–—,]+|[\s|/\\•\-–—,]+$/g, "");
+    const lower = clean.toLowerCase();
+    if (
+      lower.startsWith("portfólio:") ||
+      lower.startsWith("portfolio:") ||
+      lower.startsWith("site:") ||
+      lower.startsWith("website:")
+    ) {
+      return clean;
+    }
+    let displayUrl = clean;
+    if (displayUrl.match(/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/)) {
+      displayUrl = displayUrl.replace(/^(https?:\/\/)?(www\.)?/, "");
+    }
+    return `Portfólio: ${displayUrl}`;
+  };
+
+  const rawWebsite = personalInfo.website || "";
+  const isWebsiteGithub = rawWebsite.toLowerCase().includes("github.com");
+
   const cleanLinkedin = personalInfo.linkedin ? formatLinkedinForDocx(personalInfo.linkedin) : "";
-  const cleanGithub = personalInfo.github ? formatGithubForDocx(personalInfo.github) : "";
+  const cleanGithub = personalInfo.github
+    ? formatGithubForDocx(personalInfo.github)
+    : (isWebsiteGithub ? formatGithubForDocx(rawWebsite) : "");
+  const cleanWebsite = rawWebsite && !isWebsiteGithub ? formatWebsiteForDocx(rawWebsite) : "";
 
   // Helper to join contact items into elegant lines
   const getContactLines = () => {
@@ -87,7 +114,7 @@ export const generateStandardATSDocx = async (structured: any, templateId = "sta
         personalInfo.phone ? `Contatos: ${personalInfo.phone}` : null,
         personalInfo.email ? `E-mail: ${personalInfo.email}` : null,
         personalInfo.linkedin ? `LinkedIn: ${cleanLinkedin}` : null,
-        personalInfo.website ? `Website: ${personalInfo.website}` : null,
+        cleanWebsite ? cleanWebsite : null,
       ].filter((item) => typeof item === "string" && item.trim() !== "");
       
       if (items.length > 3) {
@@ -106,8 +133,8 @@ export const generateStandardATSDocx = async (structured: any, templateId = "sta
 
     const rawLine2 = [
       cleanLinkedin,
-      cleanGithub || (personalInfo.website?.includes("github.com") ? personalInfo.website : null),
-      personalInfo.website,
+      cleanGithub,
+      cleanWebsite,
     ];
 
     const seen = new Set<string>();

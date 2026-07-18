@@ -292,27 +292,27 @@ export default function AnalyzeResume() {
         </div>
 
         {/* Aviso de Foto & LGPD */}
-        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 text-amber-800 dark:text-amber-200 flex items-start gap-3.5 text-sm leading-relaxed shadow-sm">
-          <AlertCircle size={20} className="shrink-0 mt-0.5 text-amber-500" />
+        <div className="p-4 rounded-xl border border-orange-200 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10 text-orange-800 dark:text-orange-200 flex items-start gap-3.5 text-sm leading-relaxed shadow-sm">
+          <AlertCircle size={20} className="shrink-0 mt-0.5 text-orange-500" />
           <div className="flex flex-col gap-1.5">
-            <span className="font-bold text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            <span className="font-bold text-xs uppercase tracking-wider text-orange-600 dark:text-orange-400">
               Aviso sobre Fotos & Diretrizes LGPD (2026)
             </span>
-            <p className="text-xs">
+            <p className="text-xs text-orange-700 dark:text-orange-300">
               Nossa plataforma{" "}
-              <strong className="font-semibold">
+              <strong className="font-semibold text-orange-800 dark:text-orange-100">
                 não permite currículos com fotos
               </strong>
-              . Os modelos atuais de currículos de alto desempenho em{" "}
-              <strong className="font-semibold">2026</strong> aboliram
+              . Os modelos antigos ou outros de alto desempenho em{" "}
+              <strong className="font-semibold text-orange-800 dark:text-orange-100">2026</strong> aboliram
               completamente o uso de imagens para afastar potenciais vieses
               inconscientes de contratação. Além disso, em total conformidade
               com as diretrizes regulatórias da{" "}
-              <strong className="font-semibold">
+              <strong className="font-semibold text-orange-800 dark:text-orange-100">
                 LGPD (Lei Geral de Proteção de Dados)
               </strong>
               , qualquer imagem ou foto contida no seu arquivo original será{" "}
-              <strong className="font-semibold">
+              <strong className="font-semibold text-orange-800 dark:text-orange-100">
                 removida de forma automática
               </strong>{" "}
               pelo nosso leitor inteligente na hora do processamento,

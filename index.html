@@ -1,15 +1,16 @@
 <!doctype html>
 <html lang="pt-BR" translate="no" style="background-color: #050505;" class="dark">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    
+    <!-- Prevent White Flash/Screen loading before any stylesheets or scripts are loaded -->
+    <style>
+      html, body {
+        background-color: #050505 !important;
+      }
+      /* Detect saved theme immediately to style accordingly */
+      html.light, html.light body {
+        background-color: #f8fafc !important;
+      }
+    </style>
     <!-- Theme and Flash Prevention Script -->
     <script>
       (function() {
@@ -19,15 +20,33 @@
           if (theme === 'dark') {
             document.documentElement.classList.add('dark');
             document.documentElement.classList.remove('light');
-            document.documentElement.style.backgroundColor = '#050505';
           } else {
             document.documentElement.classList.add('light');
             document.documentElement.classList.remove('dark');
-            document.documentElement.style.backgroundColor = '#f8fafc';
           }
         } catch (e) {}
       })();
+
+      // Auto-reload on chunk/module load failures (very common during/after new deployments)
+      window.addEventListener('error', function(e) {
+        var msg = (e.message || '').toLowerCase();
+        var isChunkError = msg.indexOf('importing a module script failed') !== -1 || 
+                           msg.indexOf('failed to fetch dynamically imported module') !== -1 ||
+                           msg.indexOf('unexpected token') !== -1;
+        if (isChunkError) {
+          console.warn('Sincronizando com a última versão do servidor...');
+          window.location.reload();
+        }
+      }, true);
     </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="shortcut icon" href="/favicon.ico" />
     
     <!-- Primary Meta Tags -->
     <title>Resumind | Análise ATS</title>

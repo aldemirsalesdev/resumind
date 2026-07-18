@@ -435,11 +435,14 @@ export default function ResumeEditor() {
 
       const currentDataHash = getCleanedDataHash(editableData);
 
-      const recalculated = calculateAtsScore(editableData, res.atsAnalysis?.feedback ?? []);
+      const recalculated = calculateAtsScore(editableData, res.atsAnalysis?.feedback ?? [], res.aiEvaluations);
       const newAnalysis = {
         score: recalculated.score,
         feedback: recalculated.feedback,
         suggestions: res.atsAnalysis?.suggestions ?? [],
+        grammarErrors: res.grammarErrors ?? [],
+        missingInfo: res.missingInfo ?? [],
+        aiEvaluations: res.aiEvaluations ?? null,
         dataHash: currentDataHash,
       };
       
@@ -467,6 +470,13 @@ export default function ResumeEditor() {
           createdAt: new Date().toISOString()
         }));
       }
+
+      // Also update the resumes document to keep in sync!
+      const resumeRefDoc = doc(db, "resumes", resumeId);
+      await updateDoc(resumeRefDoc, {
+        atsScore: recalculated.score,
+        updatedAt: new Date().toISOString()
+      });
 
       setData((prev: any) => ({
         ...prev,
@@ -515,7 +525,7 @@ export default function ResumeEditor() {
               if (!aSnapshot.empty) {
                 atsAnalysis = { ...aSnapshot.docs[0].data() } as any;
                 // Auto-correct stale or inconsistent analysis using the central official logic
-                const recalculated = calculateAtsScore(resumeData, atsAnalysis.feedback);
+                const recalculated = calculateAtsScore(resumeData, atsAnalysis.feedback, atsAnalysis.aiEvaluations);
                 atsAnalysis.score = recalculated.score;
                 atsAnalysis.feedback = recalculated.feedback;
               }
@@ -1171,23 +1181,23 @@ export default function ResumeEditor() {
                   </label>
                 </div>
 
-                <div className="border border-amber-500/20 dark:border-amber-500/25 dark:bg-[#1A1A1A]/30 bg-amber-500/5 p-3.5 rounded-lg flex gap-3 mt-1 text-amber-800 dark:text-amber-200 leading-normal">
+                <div className="border border-orange-200 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10 p-3.5 rounded-lg flex gap-3 mt-1 text-orange-800 dark:text-orange-200 leading-normal">
                   <AlertCircle
                     size={18}
-                    className="text-amber-500 shrink-0 mt-0.5"
+                    className="text-orange-500 shrink-0 mt-0.5"
                   />
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
                       Política de Sem Foto (Requisitos 2026 & LGPD)
                     </span>
-                    <span className="text-[11px] leading-relaxed">
+                    <span className="text-[11px] leading-relaxed text-orange-700 dark:text-orange-300">
                       Nós{" "}
-                      <span className="font-semibold">
+                      <span className="font-semibold text-orange-800 dark:text-orange-100">
                         não permitimos currículos com fotos
                       </span>{" "}
                       em nenhum dos nossos modelos. Padrões globais modernos de
                       recrutamento e contratação em{" "}
-                      <span className="font-semibold">2026</span> não utilizam
+                      <span className="font-semibold text-orange-800 dark:text-orange-100">2026</span> não utilizam
                       fotos para assegurar a máxima igualdade de oportunidades.
                       Em total sinergia com as exigências de tratamento de dados
                       pessoais dispostas na{" "}
@@ -1869,7 +1879,7 @@ export default function ResumeEditor() {
                 </button>
               </div>
             </div>
-            <div className="pt-2 border-t dark:border-neutral-800 border-slate-200 mt-1">
+            <div className="pt-4 border-t dark:border-neutral-800 border-slate-200 mt-1">
               <p className="text-[10px] text-center text-slate-400 dark:text-neutral-500 leading-tight">
                 O Resumind utiliza inteligência artificial para otimização e
                 pode cometer erros. Revise sempre o conteúdo final antes de

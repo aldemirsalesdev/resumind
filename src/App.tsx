@@ -7,7 +7,7 @@ import {
   useLocation,
   Link,
 } from "react-router-dom";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
 import { auth } from "./lib/firebase";
 
 // Components
@@ -144,6 +144,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Process redirect result if any to handle direct Google login redirects
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Error handling Google redirect sign-in:", error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);

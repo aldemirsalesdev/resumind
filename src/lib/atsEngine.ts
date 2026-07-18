@@ -277,6 +277,75 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
       type: "warning",
       message: "O link para o perfil do LinkedIn está ausente. É altamente recomendável adicioná-lo."
     });
+  } else {
+    const linkedinRaw = normalizedContact.linkedin.toLowerCase().trim();
+    const isLinkedinPlaceholder = linkedinRaw.includes("seu-nome") || 
+                                  linkedinRaw.includes("seu_nome") || 
+                                  linkedinRaw.includes("username") || 
+                                  linkedinRaw.includes("seu-usuario") || 
+                                  linkedinRaw.includes("link-aqui");
+    const isLinkedinTooShort = linkedinRaw.length > 0 && linkedinRaw.length < 10;
+    if (isLinkedinPlaceholder || isLinkedinTooShort) {
+      contactScore = Math.max(0, contactScore - 2);
+      contactIssues.push("LinkedIn incompleto ou incorreto");
+      detectedIssues.push({
+        id: "linkedin_invalido",
+        label: "LinkedIn inválido ou incompleto",
+        severity: "IMPORTANT",
+        pointsDeducted: 2,
+        category: "Atenções",
+        type: "warning",
+        message: `O link do seu LinkedIn parece estar incompleto ou incorreto (atualmente está preenchido como "${normalizedContact.linkedin}"). Verifique o preenchimento para garantir que os recrutadores consigam acessar seu perfil.`
+      });
+    }
+  }
+
+  // GitHub validation
+  if (normalizedContact.github.length > 0) {
+    const githubRaw = normalizedContact.github.toLowerCase().trim();
+    const isGithubPlaceholder = githubRaw.includes("seu-usuario") || 
+                                githubRaw.includes("seu_usuario") || 
+                                githubRaw.includes("username") || 
+                                githubRaw.includes("seu-link") || 
+                                githubRaw.includes("link-aqui");
+    const isGithubTooShort = githubRaw.length < 8;
+    if (isGithubPlaceholder || isGithubTooShort) {
+      contactScore = Math.max(0, contactScore - 2);
+      contactIssues.push("GitHub incompleto ou incorreto");
+      detectedIssues.push({
+        id: "github_invalido",
+        label: "GitHub inválido ou incompleto",
+        severity: "IMPORTANT",
+        pointsDeducted: 2,
+        category: "Atenções",
+        type: "warning",
+        message: `O link do seu GitHub parece estar incompleto ou incorreto (atualmente está preenchido como "${normalizedContact.github}"). Verifique o preenchimento para garantir que os recrutadores consigam acessar seu perfil.`
+      });
+    }
+  }
+
+  // Portfolio validation
+  if (normalizedContact.portfolio.length > 0) {
+    const portfolioRaw = normalizedContact.portfolio.toLowerCase().trim();
+    const isPortfolioPlaceholder = portfolioRaw.includes("seu-site") || 
+                                   portfolioRaw.includes("seu_site") || 
+                                   portfolioRaw.includes("portfolio.com") || 
+                                   portfolioRaw.includes("site-aqui") || 
+                                   portfolioRaw.includes("exemplo.com");
+    const isPortfolioTooShort = portfolioRaw.length < 5;
+    if (isPortfolioPlaceholder || isPortfolioTooShort) {
+      contactScore = Math.max(0, contactScore - 2);
+      contactIssues.push("Portfólio incompleto ou incorreto");
+      detectedIssues.push({
+        id: "portfolio_invalido",
+        label: "Portfólio inválido ou incompleto",
+        severity: "IMPORTANT",
+        pointsDeducted: 2,
+        category: "Atenções",
+        type: "warning",
+        message: `O link do seu Portfólio parece estar incompleto ou incorreto (atualmente está preenchido como "${normalizedContact.portfolio}"). Verifique o preenchimento para garantir que os visitantes consigam abri-lo.`
+      });
+    }
   }
 
   if (normalizedContact.location.length < 3) {

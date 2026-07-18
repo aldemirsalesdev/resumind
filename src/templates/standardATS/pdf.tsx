@@ -67,10 +67,40 @@ export const TemplatePdfDocument = ({ data, templateId = "standard" }: TemplateP
     return clean;
   };
 
+  // Formatar o website/portfólio
+  const formatWebsiteForPDF = (website: string) => {
+    if (!website) return "";
+    let clean = website.trim();
+    clean = clean.replace(/^[\s|/\\•\-–—,]+|[\s|/\\•\-–—,]+$/g, "");
+    const lower = clean.toLowerCase();
+    if (
+      lower.startsWith("portfólio:") ||
+      lower.startsWith("portfolio:") ||
+      lower.startsWith("site:") ||
+      lower.startsWith("website:")
+    ) {
+      return clean;
+    }
+    let displayUrl = clean;
+    if (displayUrl.match(/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/)) {
+      displayUrl = displayUrl.replace(/^(https?:\/\/)?(www\.)?/, "");
+    }
+    return `Portfólio: ${displayUrl}`;
+  };
+
   const personalInfo = {
     ...rawPersonalInfo,
     linkedin: rawPersonalInfo.linkedin ? formatLinkedinForPDF(rawPersonalInfo.linkedin) : "",
-    github: rawPersonalInfo.github ? formatGithubForPDF(rawPersonalInfo.github) : "",
+    github: rawPersonalInfo.github
+      ? formatGithubForPDF(rawPersonalInfo.github)
+      : (rawPersonalInfo.website?.toLowerCase().includes("github.com")
+          ? formatGithubForPDF(rawPersonalInfo.website)
+          : ""),
+    website: rawPersonalInfo.website
+      ? (rawPersonalInfo.website?.toLowerCase().includes("github.com")
+          ? ""
+          : formatWebsiteForPDF(rawPersonalInfo.website))
+      : "",
   };
 
   const isNotEmpty = (obj: any) =>
@@ -111,7 +141,7 @@ export const TemplatePdfDocument = ({ data, templateId = "standard" }: TemplateP
         personalInfo.phone ? `Contatos: ${personalInfo.phone}` : null,
         personalInfo.email ? `E-mail: ${personalInfo.email}` : null,
         personalInfo.linkedin ? `LinkedIn: ${personalInfo.linkedin}` : null,
-        personalInfo.website ? `Website: ${personalInfo.website}` : null,
+        personalInfo.website ? personalInfo.website : null,
       ].filter((item) => typeof item === "string" && item.trim() !== "");
       
       if (items.length > 3) {
@@ -130,7 +160,7 @@ export const TemplatePdfDocument = ({ data, templateId = "standard" }: TemplateP
 
     const rawLine2 = [
       sanitizeContactField(personalInfo.linkedin),
-      sanitizeContactField(personalInfo.github || (personalInfo.website?.includes("github.com") ? personalInfo.website : null)),
+      sanitizeContactField(personalInfo.github),
       sanitizeContactField(personalInfo.website),
     ];
 

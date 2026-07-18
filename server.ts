@@ -1,7 +1,7 @@
 import { calculateAtsScore } from "./src/lib/atsScore";
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import { createProxyMiddleware } from "http-proxy-middleware";
+import { createProxyMiddleware, responseInterceptor } from "http-proxy-middleware";
 import path from "path";
 import { execSync } from "child_process";
 import fs from "fs";
@@ -122,11 +122,127 @@ import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
+// In-memory cache for Firebase Auth routes to make them load instantly and eliminate loading white-screen delay
+const authCache = new Map<string, { body: Buffer; contentType: string }>();
+
+async function preloadAuthCache() {
+  const urls = [
+    { path: "/__/auth/handler", url: "https://gen-lang-client-0799748527.firebaseapp.com/__/auth/handler", type: "text/html; charset=utf-8" },
+    { path: "/__/auth/iframe", url: "https://gen-lang-client-0799748527.firebaseapp.com/__/auth/iframe", type: "text/html; charset=utf-8" },
+    { path: "/__/auth/handler.js", url: "https://gen-lang-client-0799748527.firebaseapp.com/__/auth/handler.js", type: "text/javascript; charset=utf-8" },
+    { path: "/__/auth/experiments.js", url: "https://gen-lang-client-0799748527.firebaseapp.com/__/auth/experiments.js", type: "text/javascript; charset=utf-8" },
+    { path: "/__/auth/iframe.js", url: "https://gen-lang-client-0799748527.firebaseapp.com/__/auth/iframe.js", type: "text/javascript; charset=utf-8" }
+  ];
+
+  for (const item of urls) {
+    try {
+      if (typeof fetch === "undefined") {
+        console.warn("[AuthCache] fetch is not defined in this Node environment, skipping preloading.");
+        break;
+      }
+      const res = await fetch(item.url);
+      if (res.ok) {
+        let bodyBuffer = Buffer.from(await res.arrayBuffer());
+        if (item.path.endsWith("handler") || item.path.endsWith("iframe")) {
+          // Inject dark background and styles into the head to prevent any white flash
+          const html = bodyBuffer.toString("utf8");
+          const styledHtml = html.replace(
+            "<head>",
+            `<head>
+  <meta name="color-scheme" content="dark">
+  <style>
+    html, body {
+      background-color: #0c0a09 !important;
+      background: #0c0a09 !important;
+      color: #ffffff !important;
+    }
+  </style>`
+          );
+          bodyBuffer = Buffer.from(styledHtml, "utf8");
+        }
+        authCache.set(item.path, {
+          body: bodyBuffer,
+          contentType: item.type
+        });
+        console.log(`[AuthCache] Preloaded and styled ${item.path}`);
+      }
+    } catch (err) {
+      console.error(`[AuthCache] Failed to preload ${item.path}:`, err);
+    }
+  }
+}
+
 async function startServer() {
   console.log("Starting Node.js Fullstack Server...");
   const app = express();
   app.disable("x-powered-by");
   const PORT = 3000;
+
+  // 1. Kick off preloading immediately on startup
+  preloadAuthCache().catch(console.error);
+
+  // 2. Serve from in-memory cache if available to load instantly (0ms)
+  app.get("/__/auth/:file?", (req, res, next) => {
+    const cacheKey = req.path;
+    if (authCache.has(cacheKey)) {
+      const cached = authCache.get(cacheKey)!;
+      res.setHeader("Content-Type", cached.contentType);
+      // Aggressive caching header to tell browser to load instantly from cache next time
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.send(cached.body);
+    }
+    next();
+  });
+
+  // Proxy Firebase Auth custom domain routes to original Firebase handler domain to avoid serving our entire React app inside the popup/iframe
+  // Registered BEFORE express.json() to prevent body-parsing streams from hanging the proxy request
+  app.use(
+    "/__/auth",
+    createProxyMiddleware({
+      target: "https://gen-lang-client-0799748527.firebaseapp.com",
+      changeOrigin: true,
+      pathRewrite: {
+        "^/": "/__/auth/",
+      },
+      selfHandleResponse: true,
+      on: {
+        proxyRes: responseInterceptor(async (responseBuffer, proxyRes, req, res) => {
+          const contentType = proxyRes.headers["content-type"];
+          let body = responseBuffer;
+          if (contentType && contentType.includes("text/html")) {
+            const html = responseBuffer.toString("utf8");
+            // Inject dark background and styles into the head to prevent any white flash
+            const styledHtml = html.replace(
+              "<head>",
+              `<head>
+  <meta name="color-scheme" content="dark">
+  <style>
+    html, body {
+      background-color: #0c0a09 !important;
+      background: #0c0a09 !important;
+      color: #ffffff !important;
+    }
+  </style>`
+            );
+            body = Buffer.from(styledHtml, "utf8");
+          }
+          
+          // Dynamically cache the response if not already cached
+          let reqPath = req.url ? req.url.split("?")[0] : "";
+          if (reqPath) {
+            if (!reqPath.startsWith("/__/auth")) {
+              reqPath = "/__/auth" + (reqPath.startsWith("/") ? "" : "/") + reqPath;
+            }
+            authCache.set(reqPath, {
+              body,
+              contentType: contentType || "text/html"
+            });
+          }
+          return body;
+        })
+      },
+    })
+  );
 
   // Parse larger JSON payloads since base64 docs might be big
   app.use(express.json({ limit: "10mb" }));
@@ -181,7 +297,7 @@ async function startServer() {
       referrerPolicy: {
         policy: "strict-origin-when-cross-origin"
       },
-      crossOriginOpenerPolicy: isProduction ? { policy: "same-origin-allow-popups" } : false, // Permite que popups de autenticação (ex. Google/Firebase) se comuniquem com a janela principal
+      crossOriginOpenerPolicy: false, // Desabilitado para permitir que popups de autenticação (ex. Google/Firebase) se comuniquem com a janela principal e fechem sozinhos
       crossOriginEmbedderPolicy: false // Permite o carregamento de fontes/imagens externas de CDNs sem restrição de política COEP
     })
   );
@@ -223,15 +339,6 @@ async function startServer() {
   };
 
   app.use(cors(corsOptions));
-
-  // Proxy Firebase Auth custom domain routes to original Firebase handler domain to avoid serving our entire React app inside the popup/iframe
-  app.use(
-    "/__/auth",
-    createProxyMiddleware({
-      target: "https://gen-lang-client-0799748527.firebaseapp.com",
-      changeOrigin: true,
-    })
-  );
 
   const generalApiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -591,7 +698,8 @@ CRITÉRIOS ADAPTATIVOS DE EXPERIÊNCIA E TOM (EMPATIA):
 3. EDUCAÇÃO BÁSICA: Se o nível de educação for "Ensino Médio" ou "Ensino Fundamental", JAMAIS sugira adicionar "temas estudados", "disciplinas" ou exigir atividades acadêmicas avançadas. Apenas valide a data e o nome da instituição.
 
 AVALIAÇÃO DE LINKS E URLS (NOVO):
-- Verifique rigorosamente a validade de URLs (como LinkedIn, GitHub, portfólio). Se detectar URLs falsas, de teste, incompletas ou com domínios inválidos (ex: '.teste', '.example', 'linkedin.com/in/seu-nome', URLs sem terminação real), gere um feedback de 'warning' ou 'error' apontando que o link parece ser inválido ou de teste, e deduza pontos da nota.
+- Verifique rigorosamente a validade de URLs (como LinkedIn, GitHub, portfólio). Se detectar URLs falsas, de teste, incompletas ou com domínios inválidos (ex: '.teste', '.example', 'linkedin.com/in/seu-nome', URLs sem terminação real), gere um feedback de 'warning' ou 'error' apontando EXPLICITAMENTE qual link (ex: LinkedIn, GitHub ou Portfólio) está incorreto e qual é o valor inválido detectado.
+- JAMAIS use a palavra "completude" nas suas respostas. Prefira termos simples e fáceis de compreender pelo usuário final, como "preenchimento correto" ou "link completo".
 
 CLASSIFICAÇÃO EDUCAÇÃO vs CURSOS E CERTIFICAÇÕES (CRÍTICO):
 - A seção "Educação" (education) DEVE SER EXCLUSIVA para formações acadêmicas formais e de grau (Ensino Fundamental, Ensino Médio, Graduação, Pós-graduação, Mestrado, Doutorado, Cursos Técnicos oficiais).
@@ -836,7 +944,8 @@ CRITÉRIOS ADAPTATIVOS DE EXPERIÊNCIA E TOM (EMPATIA):
 3. EDUCAÇÃO BÁSICA: Se o nível de educação for "Ensino Médio" ou "Ensino Fundamental", JAMAIS sugira adicionar "temas estudados", "disciplinas" ou exigir atividades acadêmicas avançadas. Apenas valide a data e o nome da instituição.
 
 AVALIAÇÃO DE LINKS E URLS (NOVO):
-- Verifique rigorosamente a validade de URLs (como LinkedIn, GitHub, portfólio). Se detectar URLs falsas, de teste, incompletas ou com domínios inválidos (ex: '.teste', '.example', 'linkedin.com/in/seu-nome', URLs sem terminação real), gere um feedback de 'warning' ou 'error' apontando que o link parece ser inválido ou de teste, e deduza pontos da nota.
+- Verifique rigorosamente a validade de URLs (como LinkedIn, GitHub, portfólio). Se detectar URLs falsas, de teste, incompletas ou com domínios inválidos (ex: '.teste', '.example', 'linkedin.com/in/seu-nome', URLs sem terminação real), gere um feedback de 'warning' ou 'error' apontando EXPLICITAMENTE qual link (ex: LinkedIn, GitHub ou Portfólio) está incorreto e qual é o valor inválido detectado.
+- JAMAIS use a palavra "completude" nas suas respostas. Prefira termos simples e fáceis de compreender pelo usuário final, como "preenchimento correto" ou "link completo".
 
 CLASSIFICAÇÃO EDUCAÇÃO vs CURSOS E CERTIFICAÇÕES (CRÍTICO):
 - A seção "Educação" (education) DEVE SER EXCLUSIVA para formações acadêmicas formais e de grau (Ensino Fundamental, Ensino Médio, Graduação, Pós-graduação, Mestrado, Doutorado, Cursos Técnicos oficiais).
@@ -1217,6 +1326,9 @@ ${JSON.stringify(structuredData)}`;
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

@@ -227,8 +227,9 @@ export function calculateAtsScore(
     if (clarVal && evalWeight[clarVal] !== undefined) aiModifier += evalWeight[clarVal];
   }
 
-  // Final score is engineResult.score + aiModifier, strictly bounded [0, 100]
-  const finalScore = Math.max(0, Math.min(100, engineResult.score + aiModifier));
+  // Final score is purely the deterministic engineResult.score (strictly between 0 and 90).
+  // The AI is not calculating the score, so we do not add any AI modifier.
+  const finalScore = engineResult.score;
 
   const feedback: AtsFeedback[] = [];
 
@@ -262,6 +263,11 @@ export function calculateAtsScore(
     if (msg.includes("experiência") && (msg.includes("ausent") || msg.includes("falt"))) return false;
     if (msg.includes("formação") && (msg.includes("ausent") || msg.includes("falt"))) return false;
     if (msg.includes("habilidade") && (msg.includes("ausent") || msg.includes("falt"))) return false;
+
+    // Filter out generic link or "completude" feedback from AI
+    if (msg.includes("completude") || msg.includes("redes sociais") || (msg.includes("link") && (msg.includes("verifique") || msg.includes("inválido") || msg.includes("formato") || msg.includes("formatação") || msg.includes("acessibilidade") || msg.includes("validade") || msg.includes("completo")))) {
+      return false;
+    }
 
     // 2. Filter out duplicated warnings about out-of-place courses/certifications/agents like CIEE, Alura, Udemy, Nube, etc.
     const isAboutCourseOrInstitution = 
