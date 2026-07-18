@@ -1,6 +1,7 @@
 import { calculateAtsScore } from "./src/lib/atsScore";
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
 import { execSync } from "child_process";
 import fs from "fs";
@@ -222,6 +223,15 @@ async function startServer() {
   };
 
   app.use(cors(corsOptions));
+
+  // Proxy Firebase Auth custom domain routes to original Firebase handler domain to avoid serving our entire React app inside the popup/iframe
+  app.use(
+    "/__/auth",
+    createProxyMiddleware({
+      target: "https://gen-lang-client-0799748527.firebaseapp.com",
+      changeOrigin: true,
+    })
+  );
 
   const generalApiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
