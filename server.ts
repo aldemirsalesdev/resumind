@@ -159,10 +159,11 @@ async function startServer() {
             "https://*.run.app",
             "https://*.googleapis.com",
             "https://*.firebaseio.com",
-            "https://*.firebaseapp.com"
+            "https://*.firebaseapp.com",
+            "https://auth.resumind.site"
           ],
-          frameSrc: ["'self'", "https://*.firebaseapp.com"],
-          childSrc: ["'self'", "https://*.firebaseapp.com"]
+          frameSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site"],
+          childSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site"]
         }
       } : false, // Desabilitado em desenvolvimento para evitar conflitos com o Vite HMR
       frameguard: isProduction ? { action: "sameorigin" } : false, // Habilitado apenas em produção para evitar quebras no iframe do AI Studio em desenvolvimento
