@@ -118,9 +118,8 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
             </span>
           </h1>
 
-          <p className="text-base dark:text-neutral-400 text-slate-500 font-medium leading-relaxed max-w-md">
-            Analisamos, otimizamos e estruturamos seu currículo para os sistemas
-            ATS e aumentamos suas chances de ser notado pelos recrutadores.
+          <p className="text-base dark:text-neutral-400 text-slate-500 font-medium leading-relaxed max-w-[38rem]">
+            O Resumind é uma plataforma de análise e otimização de currículos para sistemas ATS utilizando Inteligência Artificial. Faça upload do seu currículo, receba uma análise detalhada, identifique oportunidades de melhoria e exporte uma versão otimizada para aumentar suas chances em processos seletivos.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 mt-2 mb-2 relative z-20">
@@ -530,8 +529,8 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
       >
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
-              Como <span className="text-[#f95b16]">funciona</span>
+            <h2 className="text-3xl md:text-4xl font-black text-black dark:text-white tracking-tight mb-4">
+              Como funciona
             </h2>
             <p className="text-slate-500 dark:text-neutral-400 max-w-2xl mx-auto">
               Em apenas três passos seu currículo estará pronto para ser notado

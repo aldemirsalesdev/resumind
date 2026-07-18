@@ -7,7 +7,7 @@ const defaultAppletConfig = {
   projectId: "gen-lang-client-0799748527",
   appId: "1:303913726449:web:4d0a00b9efec917c289450",
   apiKey: ["AIz", "aSy", "BDjo2141Q9Nk2j7xR3Aa6UeYzGG0aHgSQ"].join(""),
-  authDomain: "gen-lang-client-0799748527.firebaseapp.com",
+  authDomain: "auth.resumind.site",
   firestoreDatabaseId: "ai-studio-resumind-0a8954db-9531-45c2-b325-126a1bcd4b47",
   storageBucket: "gen-lang-client-0799748527.firebasestorage.app",
   messagingSenderId: "303913726449"

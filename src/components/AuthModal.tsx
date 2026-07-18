@@ -221,20 +221,6 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
             </div>
 
             {/* Error & Success Messages */}
-            {!isFirebaseConfigured && (
-              <div className="mb-4 flex flex-col gap-1.5 p-3 text-xs bg-amber-500/10 dark:bg-amber-500/5 text-amber-500 rounded-xl border border-amber-500/10 leading-normal">
-                <div className="flex items-start gap-2">
-                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <span className="font-bold">Configuração do Firebase ausente ou inválida</span>
-                </div>
-                <p className="pl-6 text-[11px] dark:text-neutral-400 text-slate-500">
-                  Para habilitar a autenticação, preencha as variáveis de ambiente <code className="px-1 py-0.5 rounded dark:bg-neutral-800 bg-slate-100 text-[10px] font-mono text-amber-500">VITE_FIREBASE_*</code> no seu arquivo <code className="px-1 py-0.5 rounded dark:bg-neutral-800 bg-slate-100 text-[10px] font-mono text-amber-500">.env</code> ou no painel da Vercel.
-                </p>
-                <p className="pl-6 text-[10px] dark:text-neutral-400 text-slate-400">
-                  Ausentes: {missingOrPlaceholderKeys.join(", ")}
-                </p>
-              </div>
-            )}
 
             {error && (
               <div className="mb-4 flex items-start gap-2 p-3 text-xs bg-red-500/10 dark:bg-red-500/5 text-red-500 rounded-xl border border-red-500/10 leading-normal">
