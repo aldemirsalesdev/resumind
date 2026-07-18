@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { calculateAtsScore } from "../lib/atsScore";
 import {
   FilePlus,
@@ -44,96 +45,93 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    import("firebase/auth").then(({ onAuthStateChanged }) => {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-        try {
-          const q = query(
-            collection(db, "resumes"),
-            where("userId", "==", user.uid),
-            orderBy("createdAt", "desc"),
-            limit(10),
-          );
-          let snapshot;
-          try {
-            snapshot = await getDocs(q);
-          } catch (err) {
+      try {
+        const resumesQ = query(
+          collection(db, "resumes"),
+          where("userId", "==", user.uid),
+          orderBy("createdAt", "desc"),
+          limit(10),
+        );
+        const analysesQ = query(
+          collection(db, "analyses"),
+          where("userId", "==", user.uid),
+        );
+
+        // Fetch resumes and analyses in parallel!
+        const [resumesSnapshot, analysesSnapshot] = await Promise.all([
+          getDocs(resumesQ).catch((err) => {
             handleFirestoreError(err, OperationType.LIST, "resumes");
             throw err;
-          }
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+          }),
+          getDocs(analysesQ).catch((err) => {
+            handleFirestoreError(err, OperationType.LIST, "analyses");
+            throw err;
+          })
+        ]);
 
-          let uniqueData = data;
-          if (data.length > 0) {
-            const analysesQ = query(
-              collection(db, "analyses"),
-              where("userId", "==", user.uid),
-            );
-            let aSnapshot;
-            try {
-              aSnapshot = await getDocs(analysesQ);
-            } catch (err) {
-              handleFirestoreError(err, OperationType.LIST, "analyses");
-              throw err;
-            }
-            const analysesMap = new Map();
-            const hashToResume = new Map();
-            
-            aSnapshot.docs.forEach((d) => {
-              const ad = d.data();
-              analysesMap.set(ad.resumeId, ad);
-            });
-            
-            // Deduplicate by dataHash
-            const deduplicated = [];
-            for (const r of data as any[]) {
-              const analysis = analysesMap.get(r.id);
-              if (analysis && analysis.dataHash) {
-                if (hashToResume.has(analysis.dataHash)) {
-                  // Duplicate content found, skip keeping this one (since data is ordered by createdAt desc, we keep the newest)
-                  continue;
-                }
-                hashToResume.set(analysis.dataHash, r.id);
+        const data = resumesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        let uniqueData = data;
+        if (data.length > 0) {
+          const analysesMap = new Map();
+          const hashToResume = new Map();
+          
+          analysesSnapshot.docs.forEach((d) => {
+            const ad = d.data();
+            analysesMap.set(ad.resumeId, ad);
+          });
+          
+          // Deduplicate by dataHash
+          const deduplicated = [];
+          for (const r of data as any[]) {
+            const analysis = analysesMap.get(r.id);
+            if (analysis && analysis.dataHash) {
+              if (hashToResume.has(analysis.dataHash)) {
+                // Duplicate content found, skip keeping this one (since data is ordered by createdAt desc, we keep the newest)
+                continue;
               }
-              deduplicated.push(r);
+              hashToResume.set(analysis.dataHash, r.id);
             }
-            uniqueData = deduplicated;
-
-            const nameCounts = {};
-            const resumesData = uniqueData as any[];
-            [...resumesData].reverse().forEach(r => {
-              const name = r.personalInfo?.fullName || "Sem Nome";
-              if (!nameCounts[name]) nameCounts[name] = 0;
-              nameCounts[name]++;
-              r.version = nameCounts[name];
-            });
-            resumesData.forEach(r => {
-              const name = r.personalInfo?.fullName || "Sem Nome";
-              r.hasMultipleVersions = nameCounts[name] > 1;
-            });
-            
-            resumesData.forEach((r) => {
-              const ad = analysesMap.get(r.id);
-              r.score = ad?.score || r.atsScore || r.score || 0;
-            });
+            deduplicated.push(r);
           }
+          uniqueData = deduplicated;
 
-          setResumes(uniqueData);
-        } catch (err) {
-          console.error("Error fetching resumes:", err);
-        } finally {
-          setLoading(false);
+          const nameCounts = {};
+          const resumesData = uniqueData as any[];
+          [...resumesData].reverse().forEach(r => {
+            const name = r.personalInfo?.fullName || "Sem Nome";
+            if (!nameCounts[name]) nameCounts[name] = 0;
+            nameCounts[name]++;
+            r.version = nameCounts[name];
+          });
+          resumesData.forEach(r => {
+            const name = r.personalInfo?.fullName || "Sem Nome";
+            r.hasMultipleVersions = nameCounts[name] > 1;
+          });
+          
+          resumesData.forEach((r) => {
+            const ad = analysesMap.get(r.id);
+            r.score = ad?.score || r.atsScore || r.score || 0;
+          });
         }
-      });
-      return () => unsubscribe();
+
+        setResumes(uniqueData);
+      } catch (err) {
+        console.error("Error fetching resumes:", err);
+      } finally {
+        setLoading(false);
+      }
     });
+    return () => unsubscribe();
   }, []);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {

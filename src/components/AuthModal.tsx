@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, User, Ghost, VenetianMask } from "lucide-react";
 import { auth, googleProvider, isFirebaseConfigured, missingOrPlaceholderKeys } from "../lib/firebase";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, sendPasswordResetEmail, fetchSignInMethodsForEmail } from "firebase/auth";
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, sendPasswordResetEmail, fetchSignInMethodsForEmail, updateProfile } from "firebase/auth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -153,7 +153,6 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
         
         // Update profile name in Firebase
         if (fbCred.user) {
-          const { updateProfile } = await import("firebase/auth");
           await updateProfile(fbCred.user, { displayName: name });
         }
 

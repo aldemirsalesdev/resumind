@@ -47,6 +47,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { resumeSchema } from "../lib/resumeSchema";
 import { getCleanedDataHash } from "../export/exportResume";
 
@@ -484,46 +485,42 @@ export default function ResumeEditor() {
   };
 
   useEffect(() => {
-    import("firebase/auth").then(({ onAuthStateChanged }) => {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          if (!initialData && resumeId) {
-            try {
-              const docRef = doc(db, "resumes", resumeId);
-              let docSnap;
-              try {
-                docSnap = await getDoc(docRef);
-              } catch (error) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (!initialData && resumeId) {
+          try {
+            const docRef = doc(db, "resumes", resumeId);
+            const analysesQ = query(
+              collection(db, "analyses"),
+              where("resumeId", "==", resumeId),
+              where("userId", "==", user.uid),
+            );
+
+            // Fetch resume and its analyses in parallel!
+            const [docSnap, aSnapshot] = await Promise.all([
+              getDoc(docRef).catch((error) => {
                 handleFirestoreError(error, OperationType.GET, `resumes/${resumeId}`);
                 throw error;
+              }),
+              getDocs(analysesQ).catch((error) => {
+                handleFirestoreError(error, OperationType.LIST, `analyses`);
+                throw error;
+              })
+            ]);
+
+            if (docSnap.exists() && docSnap.data().userId === user.uid) {
+              const resumeData = docSnap.data();
+
+              let atsAnalysis: any = { score: 0, feedback: [] };
+              if (!aSnapshot.empty) {
+                atsAnalysis = { ...aSnapshot.docs[0].data() } as any;
+                // Auto-correct stale or inconsistent analysis using the central official logic
+                const recalculated = calculateAtsScore(resumeData, atsAnalysis.feedback);
+                atsAnalysis.score = recalculated.score;
+                atsAnalysis.feedback = recalculated.feedback;
               }
 
-              if (docSnap.exists() && docSnap.data().userId === user.uid) {
-                const resumeData = docSnap.data();
-
-                // fetch analysis
-                const analysesQ = query(
-                  collection(db, "analyses"),
-                  where("resumeId", "==", resumeId),
-                  where("userId", "==", user.uid),
-                );
-                let aSnapshot;
-                try {
-                  aSnapshot = await getDocs(analysesQ);
-                } catch (error) {
-                  handleFirestoreError(error, OperationType.LIST, `analyses`);
-                  throw error;
-                }
-                let atsAnalysis: any = { score: 0, feedback: [] };
-                if (!aSnapshot.empty) {
-                  atsAnalysis = { ...aSnapshot.docs[0].data() } as any;
-                  // Auto-correct stale or inconsistent analysis using the central official logic
-                  const recalculated = calculateAtsScore(resumeData, atsAnalysis.feedback);
-                  atsAnalysis.score = recalculated.score;
-                  atsAnalysis.feedback = recalculated.feedback;
-                }
-
-                let finalSummary = resumeData.summary || "";
+              let finalSummary = resumeData.summary || "";
                 const fullNameLower = (resumeData.personalInfo?.fullName || "").toLowerCase();
                 const isAldemir = fullNameLower.includes("aldemir") || fullNameLower.includes("sales") || fullNameLower.includes("moreira") || user.email === ((import.meta as any).env.VITE_ADMIN_EMAIL || "");
                 
@@ -587,9 +584,8 @@ export default function ResumeEditor() {
         } else {
           setLoading(false);
         }
-      });
-      return () => unsubscribe();
     });
+    return () => unsubscribe();
   }, [initialData, resumeId]);
 
   if (loading) {

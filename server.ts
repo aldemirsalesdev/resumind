@@ -146,7 +146,10 @@ async function startServer() {
             "'unsafe-inline'", 
             "'unsafe-eval'", 
             "https://apis.google.com",
-            "https://*.firebaseapp.com"
+            "https://*.firebaseapp.com",
+            "https://auth.resumind.site",
+            "https://*.gstatic.com",
+            "https://accounts.google.com"
           ],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -160,10 +163,12 @@ async function startServer() {
             "https://*.googleapis.com",
             "https://*.firebaseio.com",
             "https://*.firebaseapp.com",
-            "https://auth.resumind.site"
+            "https://auth.resumind.site",
+            "https://*.gstatic.com",
+            "https://accounts.google.com"
           ],
-          frameSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site"],
-          childSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site"]
+          frameSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site", "https://accounts.google.com"],
+          childSrc: ["'self'", "https://*.firebaseapp.com", "https://auth.resumind.site", "https://accounts.google.com"]
         }
       } : false, // Desabilitado em desenvolvimento para evitar conflitos com o Vite HMR
       frameguard: isProduction ? { action: "sameorigin" } : false, // Habilitado apenas em produção para evitar quebras no iframe do AI Studio em desenvolvimento
@@ -175,6 +180,7 @@ async function startServer() {
       referrerPolicy: {
         policy: "strict-origin-when-cross-origin"
       },
+      crossOriginOpenerPolicy: isProduction ? { policy: "same-origin-allow-popups" } : false, // Permite que popups de autenticação (ex. Google/Firebase) se comuniquem com a janela principal
       crossOriginEmbedderPolicy: false // Permite o carregamento de fontes/imagens externas de CDNs sem restrição de política COEP
     })
   );
