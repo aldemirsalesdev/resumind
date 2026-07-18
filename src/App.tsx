@@ -152,9 +152,11 @@ export default function App() {
   }, []);
 
   if (loading) {
+    const savedTheme = typeof window !== "undefined" ? localStorage.getItem("theme") : "dark";
+    const isDark = savedTheme !== "light";
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#050505]">
-        <div className="w-12 h-12 border border-neutral-800 border-t-orange-500 rounded-full animate-spin"></div>
+      <div className={cn("flex items-center justify-center min-h-screen transition-colors duration-150", isDark ? "bg-[#050505]" : "bg-slate-50")}>
+        <div className={cn("w-12 h-12 border rounded-full animate-spin", isDark ? "border-neutral-800 border-t-orange-500" : "border-slate-200 border-t-orange-500")}></div>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" translate="no">
+<html lang="pt-BR" translate="no" style="background-color: #050505;" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,6 +9,25 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Theme and Flash Prevention Script -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('theme');
+          var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+            document.documentElement.style.backgroundColor = '#050505';
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.backgroundColor = '#f8fafc';
+          }
+        } catch (e) {}
+      })();
+    </script>
     
     <!-- Primary Meta Tags -->
     <title>Resumind | Análise ATS</title>
@@ -33,7 +52,7 @@
     <meta property="twitter:description" content="Otimização de currículos para sistemas ATS usando IA. Aumente suas chances de ser chamado para entrevistas." />
     <meta property="twitter:image" content="https://resumind.site/favicon.svg" />
   </head>
-  <body>
+  <body style="background-color: #050505; color: #ffffff; margin: 0;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
