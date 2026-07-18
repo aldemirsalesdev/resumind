@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="105 87 335 335" width="100%" height="100%">
+  <!-- Left Hemisphere: Document/Sheet of Paper -->
+  <g id="document-half">
+    <!-- Document Outer Path with highly rounded bottom-left, bottom-right and top-right corners -->
+    <path d="M 180,130 
+             L 220,130 
+             A 16,16 0 0 1 236,146 
+             L 236,366 
+             A 16,16 0 0 1 220,382 
+             L 160,382 
+             A 30,30 0 0 1 130,352 
+             L 130,200 
+             Z"
+          fill="none" 
+          stroke="#FF5500" 
+          stroke-width="32" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Dog-ear fold (top-left corner) -->
+    <!-- Solid orange fold with rounded corner inside for premium styling -->
+    <path d="M 130,200 
+             L 180,130 
+             L 180,185 
+             Q 180,200 165,200 
+             Z" 
+          fill="#FF5500" />
+
+    <!-- Three thick, readable horizontal lines (pill shapes) -->
+    <path d="M 165,245 L 201,245" stroke="#FF5500" stroke-width="26" stroke-linecap="round" />
+    <path d="M 165,295 L 201,295" stroke="#FF5500" stroke-width="26" stroke-linecap="round" />
+    <path d="M 165,345 L 201,345" stroke="#FF5500" stroke-width="26" stroke-linecap="round" />
+  </g>
+
+  <!-- Right Hemisphere: Brain -->
+  <g id="brain-half">
+    <!-- Outer brain shape, scalloped and highly rounded to match the document -->
+    <path d="M 276,155 
+             C 276,138 300,128 325,128 
+             C 355,128 368,155 382,170 
+             C 396,185 415,210 415,250 
+             C 415,290 396,315 382,330 
+             C 368,345 355,382 325,382 
+             C 300,382 276,372 276,357 
+             Z" 
+          fill="none" 
+          stroke="#FF5500" 
+          stroke-width="32" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Brain grooves (sulci) matching the image exactly -->
+    <!-- Top groove: elegant wave curving down-right -->
+    <path d="M 310,182 C 310,212 345,200 345,230" 
+          fill="none" 
+          stroke="#FF5500" 
+          stroke-width="26" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Middle groove: curve starting near the center line and moving up-right -->
+    <path d="M 292,280 C 292,250 330,265 345,245" 
+          fill="none" 
+          stroke="#FF5500" 
+          stroke-width="26" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Bottom groove: smiling hook shape -->
+    <path d="M 315,335 C 330,335 345,325 345,305" 
+          fill="none" 
+          stroke="#FF5500" 
+          stroke-width="26" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+</svg>

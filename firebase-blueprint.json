@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Resume": {
+      "title": "Resume",
+      "description": "Structured resume data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "personalInfo": {
+          "type": "object",
+          "properties": {
+            "fullName": { "type": "string" },
+            "email": { "type": "string" },
+            "phone": { "type": "string" },
+            "location": { "type": "string" },
+            "linkedin": { "type": "string" },
+            "website": { "type": "string" }
+          }
+        },
+        "summary": { "type": "string" },
+        "experience": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "company": { "type": "string" },
+              "position": { "type": "string" },
+              "startDate": { "type": "string" },
+              "endDate": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "education": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "institution": { "type": "string" },
+              "degree": { "type": "string" },
+              "field": { "type": "string" },
+              "graduationDate": { "type": "string" }
+            }
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId"]
+    },
+    "Analysis": {
+      "title": "Analysis",
+      "description": "ATS analysis results",
+      "type": "object",
+      "properties": {
+        "resumeId": { "type": "string" },
+        "userId": { "type": "string" },
+        "score": { "type": "number" },
+        "feedback": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": { "type": "string" },
+              "message": { "type": "string" },
+              "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+            }
+          }
+        },
+        "suggestions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["resumeId", "userId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "resumes/{resumeId}": {
+      "schema": "Resume",
+      "description": "Stored resume data"
+    },
+    "analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "ATS analysis results for a resume"
+    }
+  }
+}

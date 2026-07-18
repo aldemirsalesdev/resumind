@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 125" width="100%" height="100%">
+  <style>
+    .brand-orange { stroke: #FF5500; fill: none; }
+    .brand-orange-fill { fill: #FF5500; }
+    .text-title { fill: #09090B; }
+    .text-subtitle { fill: #71717A; }
+    @media (prefers-color-scheme: dark) {
+      .text-title { fill: #FAFAFA; }
+      .text-subtitle { fill: #A1A1AA; }
+    }
+  </style>
+
+  <!-- Symmetrical Brain Icon Group -->
+  <g transform="translate(15, 12.5) scale(0.2)">
+    <!-- Left Hemisphere Definition -->
+    <g id="hemisphere-left-resumind">
+      <!-- Left Outer Contour with closed flat inner vertical line at exactly x = 250 -->
+      <path d="M 250,115 C 215,115 190,123 170,150 C 145,138 120,158 115,188 C 85,198 75,248 105,283 C 75,318 85,368 115,378 C 120,408 145,428 170,418 C 190,443 215,443 250,413 L 250,115"
+            stroke="#FF5500" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+      <!-- Left Circuit 1 (Top Node) -->
+      <path d="M 230,310 L 230,220 L 205,195 L 205,160"
+            stroke="#FF5500" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <circle cx="205" cy="160" r="14" fill="#FF5500" />
+
+      <!-- Left Circuit 2 (Middle Node) -->
+      <path d="M 230,250 L 155,250"
+            stroke="#FF5500" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <circle cx="155" cy="250" r="14" fill="#FF5500" />
+
+      <!-- Left Circuit 3 (Bottom Node) -->
+      <path d="M 230,280 L 205,305 L 205,340"
+            stroke="#FF5500" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <circle cx="205" cy="340" r="14" fill="#FF5500" />
+    </g>
+
+    <!-- Right Hemisphere (Mirrored Left) -->
+    <use href="#hemisphere-left-resumind" transform="translate(500, 0) scale(-1, 1)" />
+  </g>
+
+  <!-- Wordmark on the Right -->
+  <text x="135" y="74" font-family="'Inter', -apple-system, system-ui, sans-serif" font-weight="800" class="text-title" font-size="52px" letter-spacing="-1.5px">
+    Resu<tspan fill="#FF5500">mind</tspan>
+  </text>
+  <text x="137" y="100" font-family="'Inter', -apple-system, system-ui, sans-serif" font-weight="700" class="text-subtitle" font-size="13px" letter-spacing="4px">
+    ATS RESUME BUILDER
+  </text>
+</svg>

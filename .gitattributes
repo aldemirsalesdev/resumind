@@ -1,0 +1,32 @@
+# Forçar o GitHub Linguist a detectar o projeto como majoritariamente Python,
+# além de classificar e agrupar as estatísticas de linguagem corretamente.
+
+# Ignora dependências compiladas, assets públicos e configurações de build
+dist/* linguist-vendored=true
+public/* linguist-vendored=true
+package-lock.json linguist-vendored=true
+*.json linguist-vendored=true
+*.css linguist-vendored=true
+*.html linguist-vendored=true
+
+# Ignora o servidor Node.js backend (pois todo o processamento de análise crítica está no Python)
+server.ts linguist-vendored=true
+
+# Ignora componentes do frontend e páginas secundárias para destacar o core em Python
+src/components/ui/* linguist-vendored=true
+src/components/ResumeA4Preview.tsx linguist-vendored=true
+src/components/AutoScaledPreview.tsx linguist-vendored=true
+src/components/FeedbackWidget.tsx linguist-vendored=true
+src/components/Navbar.tsx linguist-vendored=true
+src/components/SupabaseStatus.tsx linguist-vendored=true
+
+src/pages/LandingPage.tsx linguist-vendored=true
+src/pages/TemplateSelection.tsx linguist-vendored=true
+src/pages/ResumeEditor.tsx linguist-vendored=true
+src/pages/ReviewResume.tsx linguist-vendored=true
+src/pages/AnalyzeResume.tsx linguist-vendored=true
+src/pages/Dashboard.tsx linguist-vendored=true
+
+# Garante que os scripts Python são contabilizados como o código-fonte principal
+core_analyzer/*.py linguist-language=Python
+core_analyzer/*.py linguist-detectable=true
