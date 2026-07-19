@@ -161,6 +161,7 @@ export function findOutOfPlaceItems(resumeData: any): OutOfPlaceMatch[] {
 
   const education = resumeData.education || [];
   education.forEach((edu: any, idx: number) => {
+    if (!edu || typeof edu !== "object") return;
     const inst = typeof edu.institution === "string" ? edu.institution.toLowerCase().trim() : "";
     const deg = typeof edu.degree === "string" ? edu.degree.toLowerCase().trim() : "";
     const field = typeof edu.field === "string" ? edu.field.toLowerCase().trim() : "";
@@ -176,7 +177,7 @@ export function findOutOfPlaceItems(resumeData: any): OutOfPlaceMatch[] {
           section: "education",
           index: idx,
           orgName: org.displayName,
-          itemName: edu.degree || edu.field || edu.institution || org.displayName,
+          itemName: typeof edu.degree === "string" ? edu.degree : (typeof edu.field === "string" ? edu.field : (typeof edu.institution === "string" ? edu.institution : org.displayName)),
           orgId: org.id,
           item: edu
         });
@@ -247,10 +248,11 @@ export function calculateAtsScore(
   });
 
   // Filter backend AI feedback to remove things checked deterministically
-  const deduplicatedAiFeedback = backendAiFeedback.filter(fb => {
+  const deduplicatedAiFeedback = (Array.isArray(backendAiFeedback) ? backendAiFeedback : []).filter(fb => {
+    if (!fb || typeof fb !== "object") return false;
     if (fb.source === "system") return false;
 
-    const msg = (fb.message || "").toLowerCase();
+    const msg = typeof fb.message === "string" ? fb.message.toLowerCase() : "";
     
     // 1. Filter out missing or general contact info warnings
     if (msg.includes("e-mail") || msg.includes("telefone") || msg.includes("celular") || msg.includes("contato")) {
@@ -304,9 +306,10 @@ export function calculateAtsScore(
       const orgMatchedInMsg = org.patterns.some(p => msg.includes(p));
       if (orgMatchedInMsg) {
         const isStillInEducation = resumeData.education?.some((edu: any) => {
-          const inst = (edu.institution || "").toLowerCase();
-          const deg = (edu.degree || "").toLowerCase();
-          const fld = (edu.field || "").toLowerCase();
+          if (!edu || typeof edu !== "object") return false;
+          const inst = typeof edu.institution === "string" ? edu.institution.toLowerCase() : "";
+          const deg = typeof edu.degree === "string" ? edu.degree.toLowerCase() : "";
+          const fld = typeof edu.field === "string" ? edu.field.toLowerCase() : "";
           return org.patterns.some(p => matchesWord(inst, p) || matchesWord(deg, p) || matchesWord(fld, p));
         });
 
@@ -338,6 +341,7 @@ export function calculateAtsScore(
 
   // Add remaining AI feedback mapped strictly to the three categories
   deduplicatedAiFeedback.forEach(fb => {
+    if (!fb || typeof fb !== "object") return;
     let type: AtsFeedback["type"] = "warning";
     let category: AtsFeedback["category"] = "Atenções";
     let severity: AtsFeedback["severity"] = "medium";
@@ -354,10 +358,10 @@ export function calculateAtsScore(
 
     feedback.push({
       id: "ai_" + Math.random().toString(36).substring(7),
-      label: fb.label || "Revisão Qualitativa",
+      label: typeof fb.label === "string" ? fb.label : "Revisão Qualitativa",
       type,
       category,
-      message: fb.message,
+      message: typeof fb.message === "string" ? fb.message : "",
       severity,
       source: "ai"
     });

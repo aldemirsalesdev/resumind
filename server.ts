@@ -462,8 +462,8 @@ async function startServer() {
     throw lastGeminiError || new Error("Ambos os serviços Groq e Gemini falharam ao processar a requisição.");
   };
 
-  const sanitizeLinkedinLink = (linkedin: string) => {
-    if (!linkedin) return "";
+  const sanitizeLinkedinLink = (linkedin: any) => {
+    if (!linkedin || typeof linkedin !== "string") return "";
     let str = linkedin.trim();
     if (
       str.toLowerCase().includes("linkedin") &&

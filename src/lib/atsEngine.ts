@@ -152,10 +152,12 @@ function matchesWord(text: string, pattern: string): boolean {
 }
 
 function isCourseInEducation(education: any[]): boolean {
+  if (!Array.isArray(education)) return false;
   return education.some((edu: any) => {
-    const inst = (edu.institution || "").toLowerCase();
-    const deg = (edu.degree || "").toLowerCase();
-    const fld = (edu.field || "").toLowerCase();
+    if (!edu || typeof edu !== "object") return false;
+    const inst = typeof edu.institution === "string" ? edu.institution.toLowerCase() : "";
+    const deg = typeof edu.degree === "string" ? edu.degree.toLowerCase() : "";
+    const fld = typeof edu.field === "string" ? edu.field.toLowerCase() : "";
     return OUT_OF_PLACE_ORGS.some(org => 
       org.patterns.some(p => matchesWord(inst, p) || matchesWord(deg, p) || matchesWord(fld, p))
     );
@@ -200,9 +202,10 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
 
   const currentYear = new Date().getFullYear();
 
-  function parseYear(dateStr: string): number | null {
+  function parseYear(dateStr: any): number | null {
     if (!dateStr) return null;
-    const match = dateStr.match(/\b(19|20)\d{2}\b/);
+    const str = String(dateStr);
+    const match = str.match(/\b(19|20)\d{2}\b/);
     return match ? parseInt(match[0], 10) : null;
   }
 
@@ -423,7 +426,8 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
     let incompleteDescCount = 0;
     let hasMetrics = false;
     expList.forEach((e: any) => {
-      const desc = e.description || "";
+      if (!e || typeof e !== "object") return;
+      const desc = typeof e.description === "string" ? e.description : "";
       if (desc.trim().length < 100) incompleteDescCount++;
       if (/\d+%?/.test(desc)) hasMetrics = true;
     });
@@ -476,8 +480,11 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
     let missingTech = false;
     let shortDesc = false;
     projList.forEach((p: any) => {
-      if (!p.technologies || p.technologies.trim().length === 0) missingTech = true;
-      if (!p.description || p.description.trim().length < 50) shortDesc = true;
+      if (!p || typeof p !== "object") return;
+      const tech = typeof p.technologies === "string" ? p.technologies : "";
+      const desc = typeof p.description === "string" ? p.description : "";
+      if (tech.trim().length === 0) missingTech = true;
+      if (desc.trim().length < 50) shortDesc = true;
     });
 
     if (missingTech) {
@@ -536,7 +543,13 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
   } else {
     let incompleteEdu = false;
     eduList.forEach((edu: any) => {
-      if (!edu.institution || !edu.degree) incompleteEdu = true;
+      if (!edu || typeof edu !== "object") {
+        incompleteEdu = true;
+        return;
+      }
+      const inst = typeof edu.institution === "string" ? edu.institution : "";
+      const deg = typeof edu.degree === "string" ? edu.degree : "";
+      if (!inst || !deg) incompleteEdu = true;
     });
     if (incompleteEdu) {
       educationScore = Math.max(0, educationScore - 4);
@@ -555,7 +568,7 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
 
   // --- 6. Habilidades (10 pts) ---
   const skillsList = resumeData.skills || [];
-  const skillsCount = skillsList.filter((s: string) => s.trim().length > 0).length;
+  const skillsCount = skillsList.filter((s: any) => typeof s === "string" && s.trim().length > 0).length;
 
   if (skillsCount === 0) {
     skillsScore = 0;
@@ -600,7 +613,7 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
   }
 
   // --- 8. Palavras-Chave e Otimização ATS (5 pts) ---
-  const totalSkillsText = skillsList.join(" ");
+  const totalSkillsText = skillsList.map((s: any) => typeof s === "string" ? s : "").join(" ");
   const individualKeywords = totalSkillsText.split(/[\s,;.://]+/).filter(w => w.trim().length > 2);
   const keywordCount = individualKeywords.length;
 
@@ -623,14 +636,16 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
   
   // Experience dates check
   expList.forEach((e: any) => {
+    if (!e || typeof e !== "object") return;
     const startY = parseYear(e.startDate);
     const endY = parseYear(e.endDate);
     
     // Future date check (> currentYear) unless marked current
-    const isCurrent = (e.endDate || "").toLowerCase().includes("atual") || 
-                      (e.endDate || "").toLowerCase().includes("presente") || 
-                      (e.endDate || "").toLowerCase().includes("now") ||
-                      (e.endDate || "").toLowerCase().includes("present");
+    const endStr = typeof e.endDate === "string" ? e.endDate.toLowerCase() : "";
+    const isCurrent = endStr.includes("atual") || 
+                      endStr.includes("presente") || 
+                      endStr.includes("now") ||
+                      endStr.includes("present");
 
     if (startY && startY > currentYear) dateConflict = true;
     if (endY && endY > currentYear && !isCurrent) dateConflict = true;
@@ -639,6 +654,7 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
 
   // Education dates check
   eduList.forEach((edu: any) => {
+    if (!edu || typeof edu !== "object") return;
     const startY = parseYear(edu.startDate);
     const endY = parseYear(edu.graduationDate || edu.endDate);
     
