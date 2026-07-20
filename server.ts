@@ -373,7 +373,7 @@ async function startServer() {
     const key = process.env.GROQ_API_KEY;
     if (!key)
       throw new Error(
-        "GROQ_API_KEY is not configured. Adicione a chave GROQ_API_KEY no arquivo .env",
+        "GROQ_API_KEY não está configurada. Adicione a chave GROQ_API_KEY nas variáveis de ambiente do sistema.",
       );
     return new Groq({ apiKey: key });
   };
@@ -1169,7 +1169,7 @@ ${JSON.stringify(structuredData)}`;
       if (!groqKey) {
         results.groq = {
           status: "missing",
-          message: "Chave GROQ_API_KEY não encontrada no arquivo .env",
+          message: "Chave GROQ_API_KEY não encontrada nas variáveis de ambiente do sistema",
         };
       } else {
         const client = getGroqClient();
@@ -1202,7 +1202,7 @@ ${JSON.stringify(structuredData)}`;
         results.gemini = {
           status: "missing",
           message:
-            "Chave GEMINI_API_KEY não encontrada no arquivo .env (Opcional se usar Groq)",
+            "Chave GEMINI_API_KEY não encontrada nas variáveis de ambiente do sistema (Opcional se usar Groq)",
         };
       } else {
         const client = getGeminiClient();
@@ -1245,7 +1245,7 @@ ${JSON.stringify(structuredData)}`;
         results.supabase = {
           status: "missing",
           message:
-            "Credenciais do Supabase ausentes ou usando os placeholders padrões no .env",
+            "Credenciais do Supabase ausentes ou usando os placeholders padrões nas variáveis de ambiente do sistema",
         };
       } else {
         const fetchUrl = `${sbUrl}/rest/v1/feedbacks?select=id&limit=1`;
