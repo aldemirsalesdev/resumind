@@ -672,7 +672,6 @@ DADOS ADICIONAIS DE ANÁLISE HEURÍSTICA (Calculados via Engine Python integrada
 Por favor, leve em consideração essas métricas estruturais e os contatos identificados para complementar e enriquecer a sua resposta estruturada final e os feedbacks! Caso haja divergência gritante, priorize a precisão dos dados identificados pela engine.`;
       }
 
-      const client = getGroqClient();
       const currentYear = new Date().getFullYear();
 
       const prompt = `Analise o texto abaixo e extraia as informações de forma estruturada como um currículo profissional (resume, CV).
@@ -930,7 +929,6 @@ ${rawText}`;
         );
       }
 
-      const client = getGroqClient();
       const currentYear = new Date().getFullYear();
 
       const prompt = `Atue como um Especialista de Qualidade / QA de RH e Analista de ATS internacional.
