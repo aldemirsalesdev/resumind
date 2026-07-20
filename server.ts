@@ -303,8 +303,9 @@ async function startServer() {
   );
 
   // CORS global security middleware
-  const customOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || process.env.allowed_origins;
+  const customOrigins = allowedOriginsEnv
+    ? allowedOriginsEnv.split(",").map((o) => o.trim())
     : [];
 
   const allowedOrigins = [
@@ -357,7 +358,7 @@ async function startServer() {
 
   // Helper for Gemini
   const getGeminiClient = () => {
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || process.env.gemini_api_key;
     if (!key) throw new Error("GEMINI_API_KEY is not configured.");
     return new GoogleGenAI({
       apiKey: key,
@@ -370,7 +371,7 @@ async function startServer() {
   };
 
   const getGroqClient = () => {
-    const key = process.env.GROQ_API_KEY;
+    const key = process.env.GROQ_API_KEY || process.env.groq_api_key;
     if (!key)
       throw new Error(
         "GROQ_API_KEY não está configurada. Adicione a chave GROQ_API_KEY nas variáveis de ambiente do sistema.",
@@ -1159,13 +1160,12 @@ ${JSON.stringify(structuredData)}`;
     const results: any = {
       groq: { status: "unknown", message: "" },
       gemini: { status: "unknown", message: "" },
-      supabase: { status: "unknown", message: "" },
       python: { status: "unknown", message: "" },
     };
 
     // 1. Check Groq API
     try {
-      const groqKey = process.env.GROQ_API_KEY;
+      const groqKey = process.env.GROQ_API_KEY || process.env.groq_api_key;
       if (!groqKey) {
         results.groq = {
           status: "missing",
@@ -1197,7 +1197,7 @@ ${JSON.stringify(structuredData)}`;
 
     // 2. Check Gemini API
     try {
-      const geminiKey = process.env.GEMINI_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY || process.env.gemini_api_key;
       if (!geminiKey) {
         results.gemini = {
           status: "missing",
@@ -1225,70 +1225,7 @@ ${JSON.stringify(structuredData)}`;
       };
     }
 
-    // 3. Check Supabase (server-side environment variable test and API ping)
-    try {
-      const sbUrl =
-        process.env.VITE_SUPABASE_URL || "https://sua-url-aqui.supabase.co";
-      const sbKey =
-        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-        process.env.VITE_SUPABASE_ANON_KEY ||
-        "sua-chave-publica-aqui";
-
-      const isUrlPlaceholder =
-        !sbUrl || sbUrl.includes("sua-url-aqui") || sbUrl.includes("SUA_URL");
-      const isKeyPlaceholder =
-        !sbKey ||
-        sbKey.includes("sua-chave-publica") ||
-        sbKey.includes("SUA_CHAVE");
-
-      if (isUrlPlaceholder || isKeyPlaceholder) {
-        results.supabase = {
-          status: "missing",
-          message:
-            "Credenciais do Supabase ausentes ou usando os placeholders padrões nas variáveis de ambiente do sistema",
-        };
-      } else {
-        const fetchUrl = `${sbUrl}/rest/v1/feedbacks?select=id&limit=1`;
-        const headers: any = {
-          apikey: sbKey,
-          Authorization: `Bearer ${sbKey}`,
-        };
-        const start = Date.now();
-        const sbRes = await fetch(fetchUrl, { headers });
-        const duration = Date.now() - start;
-
-        if (sbRes.ok) {
-          results.supabase = {
-            status: "online",
-            message: `Banco de dados Supabase conectado com sucesso! Latência: ${duration}ms.`,
-          };
-        } else {
-          const bodyText = await sbRes.text();
-          if (
-            bodyText.includes("relation") &&
-            bodyText.includes("does not exist")
-          ) {
-            results.supabase = {
-              status: "online_missing_table",
-              message:
-                "Conectado ao projeto Supabase, porém a tabela 'feedbacks' precisa ser criada utilizando o script 'supabase-schema.sql'.",
-            };
-          } else {
-            results.supabase = {
-              status: "error",
-              message: `Erro de autenticação ou resposta do Supabase: Código HTTP ${sbRes.status}.`,
-            };
-          }
-        }
-      }
-    } catch (e: any) {
-      results.supabase = {
-        status: "error",
-        message: `Falha de rede ao conectar com Supabase: ${e.message || String(e)}`,
-      };
-    }
-
-    // 4. Check Python 3
+    // 3. Check Python 3
     try {
       const version = execSync("python3 --version").toString().trim();
       results.python = {
