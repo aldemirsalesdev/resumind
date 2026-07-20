@@ -681,10 +681,10 @@ PRESERVE A ORIGINALIDADE EXATA das informações, transcrevendo frases completas
 
 REGRA ABSOLUTA DE NÃO ALTERAÇÃO E NÃO TRADUÇÃO:
 1. NÃO TRADUZA O TEXTO EM HIPÓTESE ALGUMA! Se o currículo original estiver em Português, mantenha todos os termos, cargos, descrições, cursos e textos EXATAMENTE em Português. Se estiver em inglês, mantenha em inglês. NUNCA faça traduções espontâneas.
-2. NÃO TENTE CORRIGIR OU MELHORAR O TEXTO EXTRAÍDO! Toda a extração na propriedade "structuredData" deve ser LITERAL ao que o usuário escreveu. Se houver erros ortográficos, termos fracos ou problemas de formatação, extraia-os exatamente como estão no texto e aponte os problemas APENAS no campo "grammarErrors" ou "atsAnalysis.feedback". Nunca altere o texto no "structuredData" por conta própria.
+2. NÃO TENTE CORRIGIR OU MELHORAR O TEXTO EXTRAÍDO! Toda a extração na propriedade "structuredData" deve ser LITERAL au que o usuário escreveu. Se houver erros ortográficos, termos fracos ou problemas de formatação, extraia-os exatamente como estão no texto e aponte os problemas APENAS no campo "grammarErrors" ou "atsAnalysis.feedback". Nunca altere o texto no "structuredData" por conta própria.
 3. NÃO MUTE cargos, nomes, empresas ou descrições para soar mais profissional na extração. O "structuredData" deve ser um reflexo 100% fiel e exato do texto enviado pelo usuário.
 
-ATENÇÃO EXTREMA SOBRE O ANO CORRENTE: O ano de referência atual é ${currentYear}. Datas até ${currentYear} não constituem datas futuras.
+ATENÇÃO EXTREMA SOBRE O ANO CORRENTE: O ano de referência atual é ${currentYear}. Datas até ${currentYear} não constituem datas futuras. IMPORTANTE: Datas de formatura acadêmica ou conclusão de curso no futuro (como 2027, 2028, etc.) são perfeitamente normais e válidas para estudantes que estão atualmente cursando, e NÃO devem ser tratadas como erros, datas futuras impossíveis ou erros de digitação. Do mesmo modo, se o usuário escrever algo como "previsão para 2027" ou "conclusão em 2027", isso não é um erro.
 
 EXTRAÇÃO RIGOROSA DE CONTATOS:
 - Extraia o E-mail, o Telefone, o LinkedIn e o GitHub (se existirem) com MUITA atenção! O sistema depende disso.
@@ -935,7 +935,7 @@ ${rawText}`;
       const prompt = `Atue como um Especialista de Qualidade / QA de RH e Analista de ATS internacional.
 Você receberá um currículo em formato JSON.
 
-ATENÇÃO EXTREMA SOBRE O ANO CORRENTE: O ano é ${currentYear}. Qualquer data ATÉ ${currentYear} não é data futura nem erro.
+ATENÇÃO EXTREMA SOBRE O ANO CORRENTE: O ano é ${currentYear}. Qualquer data ATÉ ${currentYear} não é data futura nem erro. IMPORTANTE: Datas de formatura acadêmica ou conclusão de curso no futuro (como 2027, 2028, etc.) são perfeitamente normais e válidas para estudantes que estão atualmente cursando, e NÃO devem ser tratadas como erros, datas futuras impossíveis ou erros de digitação. Do mesmo modo, se o usuário escrever algo como "previsão para 2027" ou "conclusão em 2027", isso não é um erro.
 
 CRITÉRIOS ADAPTATIVOS DE EXPERIÊNCIA E TOM (EMPATIA):
 1. O TOM DOS FEEDBACKS DEVE SER EXTREMAMENTE POLIDO, PROFISSIONAL E CONSTRUTIVO. Avalie o candidato com respeito, sugira melhorias objetivas e EVITE elogios exagerados ou frases como "praticamente perfeito" se houver lacunas.

@@ -254,6 +254,15 @@ export function calculateAtsScore(
 
     const msg = typeof fb.message === "string" ? fb.message.toLowerCase() : "";
     
+    // Regra absoluta para ignorar falsos positivos de datas futuras de formatura acadêmica (ex: 2027, 2028, etc. como "erro de digitação" ou "data futura impossível")
+    const isAboutFutureGraduation = (msg.includes("2027") || msg.includes("2028") || msg.includes("2029") || msg.includes("data futura") || msg.includes("futuro")) && 
+                                    (msg.includes("conclusão") || msg.includes("conclusao") || msg.includes("previsão") || msg.includes("previsao") || msg.includes("prevista") || msg.includes("formação") || msg.includes("graduação") || msg.includes("curso"));
+    const mentionsTypoOrErrorWithDate = msg.includes("erro de digitação") && (msg.includes("2027") || msg.includes("2028") || msg.includes("ano de") || msg.includes("conclusão") || msg.includes("conclusao") || msg.includes("prevista") || msg.includes("previsão") || msg.includes("previsao") || msg.includes("data"));
+    
+    if (isAboutFutureGraduation || mentionsTypoOrErrorWithDate) {
+      return false;
+    }
+    
     // 1. Filter out missing or general contact info warnings
     if (msg.includes("e-mail") || msg.includes("telefone") || msg.includes("celular") || msg.includes("contato")) {
       if (msg.includes("ausent") || msg.includes("falt") || msg.includes("valid") || msg.includes("complet") || msg.includes("verificar") || msg.includes("format") || msg.includes("correto") || msg.includes("atualiz")) {

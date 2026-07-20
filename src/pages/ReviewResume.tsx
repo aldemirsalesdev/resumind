@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronLeft,
+  ChevronDown,
   Download,
   RefreshCw,
   FileText,
@@ -109,6 +111,7 @@ export default function ReviewResume() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [needsUpdate, setNeedsUpdate] = useState(false);
   const [isUpdatingAnalysis, setIsUpdatingAnalysis] = useState(false);
+  const [showExtractedData, setShowExtractedData] = useState(false);
 
   const [currentPdfBlobContext, setCurrentPdfBlobContext] = useState<PdfBlobContext | null>(null);
   const [currentDocxBlobContext, setCurrentDocxBlobContext] = useState<DocxBlobContext | null>(null);
