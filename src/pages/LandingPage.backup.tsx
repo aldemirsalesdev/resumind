@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { User as FirebaseUser } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
@@ -29,8 +29,6 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { ResumeA4Preview } from "../components/ResumeA4Preview";
 import AuthModal from "../components/AuthModal";
@@ -42,129 +40,51 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const [displayedReviews, setDisplayedReviews] = useState<any[]>([]);
-  const [averageRating, setAverageRating] = useState<number>(5.0);
-  const reviewsScrollRef = useRef<HTMLDivElement>(null);
-
-  const scrollLeftReviews = () => {
-    if (reviewsScrollRef.current) {
-      reviewsScrollRef.current.scrollBy({ left: -380, behavior: "smooth" });
-    }
-  };
-
-  const scrollRightReviews = () => {
-    if (reviewsScrollRef.current) {
-      reviewsScrollRef.current.scrollBy({ left: 380, behavior: "smooth" });
-    }
-  };
+  const [averageRating, setAverageRating] = useState<number>(0);
 
   useEffect(() => {
     async function fetchPublicReviews() {
-      const DEFAULT_FALLBACK_REVIEWS = [
-        {
-          id: "default-1",
-          userName: "Mariana C.",
-          role: "Desenvolvedora Frontend",
-          rating: 5,
-          feedback: "A análise de palavras-chave para vagas ATS é incrível. Consegui passar pelo filtro automático de duas grandes empresas de tecnologia.",
-          createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 2 },
-          liked: true,
-          context: "Análise de Vaga Tech",
-          isPublic: true,
-        },
-        {
-          id: "default-2",
-          userName: "Lucas M.",
-          role: "Analista de Dados",
-          rating: 5,
-          feedback: "Interface muito limpa e objetiva. O relatório de compatibilidade mostrou exatamente o que faltava no meu currículo em PDF.",
-          createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 4 },
-          liked: true,
-          context: "Relatório de Compatibilidade",
-          isPublic: true,
-        },
-        {
-          id: "default-3",
-          userName: "Beatriz R.",
-          role: "Designer UX/UI",
-          rating: 5,
-          feedback: "Gostei muito dos modelos disponibilizados e da exportação em PDF perfeitamente formatada para o padrão A4.",
-          createdAt: { seconds: Math.floor(Date.now() / 1000) - 86400 * 7 },
-          liked: true,
-          context: "Modelos e Edição",
-          isPublic: true,
-        },
-      ];
-
       try {
-        const querySnapshot = await getDocs(collection(db, "feedbacks"));
-        const realReviews = querySnapshot.docs
-          .map((doc) => {
+        const q = query(
+          collection(db, "feedbacks"),
+          where("approved", "==", true),
+          where("isPublic", "==", true),
+          limit(20)
+        );
+        const snapshot = await getDocs(q);
+        const reviews = snapshot.docs
+          .map(doc => {
             const data = doc.data();
-            let name = data.userName?.trim() || "";
-            let publicName = "Usuário Verificado";
-
-            if (name && name.toLowerCase() !== "anonymous" && name.length > 0) {
-              const parts = name.split(" ");
+            let publicName = "Usuário verificado";
+            if (data.userName) {
+              const parts = data.userName.trim().split(" ");
               if (parts.length > 1) {
                 publicName = `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
               } else {
                 publicName = parts[0];
               }
-            } else if (data.userEmail && data.userEmail !== "anonymous") {
-              const emailPrefix = data.userEmail.split("@")[0];
-              publicName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
             }
-
             return {
               id: doc.id,
-              rating: Number(data.rating) || 5,
-              feedback: data.feedback?.trim() || "",
+              rating: data.rating,
+              feedback: data.feedback,
               userName: publicName,
-              role: data.context || "Usuário da Plataforma",
               createdAt: data.createdAt,
-              liked: data.liked ?? true,
-              context: data.context || "Geral",
-              isPublic: data.isPublic === true,
+              liked: data.liked
             };
           })
-          .filter((r) => 
-            r.rating >= 4 && 
-            r.feedback.length >= 5 && 
-            r.isPublic && 
-            !r.userName.includes("Arthur") && 
-            !r.feedback.includes("Arthur")
-          );
+          .filter(r => r.rating >= 4)
+          .slice(0, 6);
 
-        // Sort real reviews newest first
-        realReviews.sort((a, b) => {
-          const timeA = a.createdAt?.seconds || 0;
-          const timeB = b.createdAt?.seconds || 0;
-          return timeB - timeA;
-        });
-
-        // Combine real reviews with fallbacks if realReviews is fewer than 6
-        const combined = [...realReviews];
-        for (const fallback of DEFAULT_FALLBACK_REVIEWS) {
-          if (combined.length >= 6) break;
-          if (!combined.some((r) => r.feedback.toLowerCase() === fallback.feedback.toLowerCase())) {
-            combined.push(fallback);
-          }
-        }
-
-        const finalReviews = combined.slice(0, 6);
-        if (finalReviews.length > 0) {
-          const avg = finalReviews.reduce((acc, curr) => acc + curr.rating, 0) / finalReviews.length;
+        if (reviews.length > 0) {
+          const avg = reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length;
           setAverageRating(Math.round(avg * 10) / 10);
-          setDisplayedReviews(finalReviews);
-        } else {
-          setDisplayedReviews(DEFAULT_FALLBACK_REVIEWS);
         }
+        setDisplayedReviews(reviews);
       } catch (err) {
-        console.error("Erro ao buscar avaliações no Firestore:", err);
-        setDisplayedReviews(DEFAULT_FALLBACK_REVIEWS);
+        console.error("Error fetching reviews:", err);
       }
     }
-
     fetchPublicReviews();
   }, []);
 
@@ -178,7 +98,7 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
       <div className="absolute inset-x-0 top-0 bottom-0 bg-[radial-gradient(#f95b1633_1px,transparent_1px)] [background-size:32px_32px] opacity-20 pointer-events-none"></div>
 
       {/* Hero Content */}
-      <section className="max-w-[1400px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-12 items-center px-4 md:px-8 xl:px-12 pt-6 md:pt-10 pb-16 md:pb-24 lg:pb-28 z-10 relative">
+      <section className="max-w-[1400px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-12 items-center px-4 md:px-8 xl:px-12 pt-6 md:pt-10 z-10 relative">
         {/* Glow Left */}
         <div className="absolute top-0 -left-32 w-[600px] h-[600px] bg-[#f95b16] opacity-[0.05] blur-[120px] rounded-full pointer-events-none"></div>
 
@@ -280,7 +200,22 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
             </div>
           </div>
 
-
+          <div className="mt-4 dark:bg-[#111111] bg-white border dark:border-neutral-800 border-slate-200 p-6 rounded-2xl w-full max-w-md relative overflow-hidden">
+            <div className="absolute top-2 left-4 text-[#f95b16] text-6xl leading-none font-serif font-black mb-2 opacity-30">
+              "
+            </div>
+            <p className="dark:text-neutral-300 text-slate-600 text-sm mb-4 leading-relaxed mt-2 relative z-10 pl-6">
+              Depois que ajustei meu currículo com o Resumind, consegui destacar melhor meus conhecimentos em redes, Linux e segurança da informação. Em poucos dias, fui chamado para entrevistas de estágio na área.
+            </p>
+            <div className="pl-6 relative z-10 flex flex-col gap-0.5">
+              <p className="dark:text-white text-slate-900 font-bold text-[13px]">
+                ARTHUR S.
+              </p>
+              <p className="dark:text-neutral-500 text-slate-400 text-[11px]">
+                Estudante de Segurança da Informação
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right Side (Dynamic View) - Hidden on Mobile */}
@@ -703,105 +638,82 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
       {displayedReviews.length > 0 && (
         <section
           id="avaliacoes"
-          className="w-full max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 py-20 md:py-28 border-t dark:border-neutral-900 border-slate-200 z-10 relative"
+          className="w-full max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 py-16 md:py-24 border-t dark:border-neutral-900 border-slate-200 z-10 relative"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 dark:bg-[#111111] bg-white border dark:border-neutral-800 border-slate-200 dark:text-neutral-400 text-slate-500 text-[11px] font-semibold rounded-full uppercase tracking-widest mb-4 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f95b16]"></span>
-                AVALIAÇÕES E DEPOIMENTOS
+              <div className="inline-flex items-center gap-2 px-3 py-1 dark:bg-[#111111] bg-white border dark:border-neutral-800 border-slate-200 dark:text-neutral-400 text-slate-500 text-[10px] font-semibold rounded-full uppercase tracking-widest mb-4">
+                <Star
+                  size={12}
+                  className="text-amber-500 fill-amber-500 animate-pulse"
+                />
+                Avaliações da Comunidade
               </div>
               <h2 className="text-3xl md:text-4xl font-black dark:text-white text-slate-900 tracking-tight">
-                O que dizem sobre o{" "}
-                <span className="text-[#f95b16]">Resumind</span>
+                O que dizem os{" "}
+                <span className="text-[#f95b16]">profissionais</span>
               </h2>
-              <p className="dark:text-neutral-400 text-slate-600 text-sm mt-3 max-w-xl leading-relaxed">
-                Depoimentos reais de quem utilizou o Resumind para otimizar o
-                currículo e ser aprovado nos filtros automáticos ATS.
+              <p className="dark:text-neutral-400 text-slate-500 text-sm mt-3 max-w-xl">
+                Confira a opinião de quem já utilizou o Resumind para otimizar o
+                currículo e acelerar a busca pela vaga ideal.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 self-start md:self-auto">
-              {/* Average Rating Block */}
-              <div className="flex items-center gap-4 p-3.5 dark:bg-[#0d0d0d] bg-white border dark:border-neutral-800 border-slate-200 rounded-2xl shrink-0 shadow-sm">
-                <div className="text-center">
-                  <p className="text-2xl md:text-3xl font-black dark:text-white text-slate-900 leading-none">
-                    {averageRating.toFixed(1)}
-                  </p>
-                  <p className="text-[9px] text-neutral-500 uppercase font-bold mt-1">
-                    Média Geral
-                  </p>
-                </div>
-                <div className="h-9 w-px dark:bg-neutral-800 bg-slate-200"></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        size={13}
-                        className={s <= averageRating ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-neutral-700"}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[10px] dark:text-neutral-400 text-slate-500 font-medium">
-                    Usuários Verificados
-                  </p>
-                </div>
+            {/* Average Rating Block */}
+            <div className="flex items-center gap-4 p-4 dark:bg-[#0a0a0a] bg-white border dark:border-neutral-800 border-slate-200 rounded-2xl shrink-0">
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white text-slate-900 leading-none">
+                  {averageRating.toFixed(1)}
+                </p>
+                <p className="text-[10px] text-neutral-500 uppercase font-bold mt-1">
+                  Média de Nota
+                </p>
               </div>
-
-              {/* Slider Navigation Arrows */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={scrollLeftReviews}
-                  className="p-3 rounded-full dark:bg-[#0d0d0d] bg-white border dark:border-neutral-800 border-slate-200 text-slate-700 dark:text-neutral-300 hover:border-[#f95b16]/60 hover:text-[#f95b16] transition-all shadow-sm active:scale-95 cursor-pointer"
-                  aria-label="Avaliações Anteriores"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  onClick={scrollRightReviews}
-                  className="p-3 rounded-full dark:bg-[#0d0d0d] bg-white border dark:border-neutral-800 border-slate-200 text-slate-700 dark:text-neutral-300 hover:border-[#f95b16]/60 hover:text-[#f95b16] transition-all shadow-sm active:scale-95 cursor-pointer"
-                  aria-label="Próximas Avaliações"
-                >
-                  <ChevronRight size={18} />
-                </button>
+              <div className="h-10 w-px dark:bg-neutral-800 bg-slate-200"></div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={14}
+                      className={s <= averageRating ? "text-amber-400 fill-amber-400" : "text-slate-200 dark:text-neutral-700"}
+                    />
+                  ))}
+                </div>
+                <p className="text-[11px] dark:text-neutral-400 text-slate-500 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 size={12} className="text-emerald-500" />{" "}
+                  Avaliações de Usuários
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Reviews Horizontal Carousel Slider */}
-          <div
-            ref={reviewsScrollRef}
-            className="flex items-stretch gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory pb-6 mb-8 scroll-smooth [&::-webkit-scrollbar]:hidden select-none px-1"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
+          {/* Reviews Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayedReviews.map((review) => (
               <motion.div
                 key={review.id}
-                initial={{ opacity: 0, scale: 0.98 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.3 }}
-                className="w-[85vw] max-w-[360px] sm:w-[350px] md:w-[380px] shrink-0 snap-center dark:bg-[#0d0d0d] bg-white border dark:border-neutral-800 border-slate-200/90 p-6 md:p-7 rounded-2xl flex flex-col justify-between gap-6 shadow-sm hover:border-[#f95b16]/40 transition-all duration-300 group relative"
+                transition={{ duration: 0.4 }}
+                className="dark:bg-[#111111] bg-white border dark:border-neutral-800 border-slate-200/80 p-6 rounded-2xl flex flex-col justify-between gap-5 shadow-sm hover:border-[#f95b16]/30 transition-all group"
               >
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3.5">
                   {/* Header info */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-[#f95b16]/10 border border-[#f95b16]/20 flex items-center justify-center font-bold text-[#f95b16] text-sm shrink-0">
-                      {review.userName ? review.userName.charAt(0).toUpperCase() : "U"}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-sm dark:text-white text-slate-900 tracking-tight truncate">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm dark:text-white text-slate-900 tracking-tight">
                         {review.userName}
                       </h4>
-                      <p className="text-[11px] dark:text-neutral-400 text-slate-500 font-medium truncate">
-                        {review.role || "Usuário da Plataforma"}
+                      <p className="text-[10px] dark:text-neutral-500 text-slate-400 font-medium">
+                        Usuário
                       </p>
                     </div>
                   </div>
 
                   {/* Stars */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
@@ -809,31 +721,30 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
                         className={`${
                           review.rating >= star
                             ? "text-amber-400 fill-amber-400"
-                            : "text-slate-200 dark:text-neutral-800"
+                            : "text-slate-200 dark:text-neutral-700"
                         }`}
                       />
                     ))}
-                    <span className="text-[11px] font-bold dark:text-amber-400 text-amber-600 ml-1">
-                      {review.rating}.0
-                    </span>
                   </div>
 
                   {/* Text */}
-                  <p className="text-xs md:text-sm dark:text-neutral-200 text-slate-700 leading-relaxed font-normal italic">
-                    "{review.feedback}"
+                  <p className="text-xs dark:text-neutral-300 text-slate-600 leading-relaxed font-medium line-clamp-4">
+                    "
+                    {review.feedback}
+                    "
                   </p>
                 </div>
 
                 {/* Footer row */}
-                <div className="flex items-center justify-between border-t dark:border-neutral-800/80 border-slate-100 pt-4 mt-2">
-                  <span className="text-[10px] font-mono dark:text-neutral-500 text-slate-400 font-medium">
+                <div className="flex items-center justify-between border-t dark:border-neutral-900 border-slate-100 pt-3.5">
+                  <span className="text-[10px] font-mono dark:text-neutral-500 text-slate-400 font-semibold">
                     {review.createdAt?.seconds 
                       ? new Date(review.createdAt.seconds * 1000).toLocaleDateString("pt-BR")
                       : new Date().toLocaleDateString("pt-BR")}
                   </span>
                   {review.liked && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#f95b16]">
-                      <ThumbsUp size={11} className="fill-current" /> Recomenda
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 dark:text-orange-400">
+                      <ThumbsUp size={10} className="fill-current" /> Recomenda
                     </span>
                   )}
                 </div>
@@ -841,11 +752,12 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
             ))}
           </div>
 
-          {/* Small CTA at the bottom with generous spacing */}
-          <div className="text-center pt-6 pb-4">
-            <p className="text-xs dark:text-neutral-500 text-slate-500 font-medium">
-              Quer ver sua opinião aqui? Envie sua avaliação pelo botão flutuante de{" "}
-              <span className="text-[#f95b16] font-bold">Feedback</span> no canto inferior direito!
+          {/* Small CTA at the bottom */}
+          <div className="text-center mt-12 mb-8">
+            <p className="text-xs dark:text-neutral-500 text-slate-400 font-medium">
+              Quer ver sua opinião aqui? Use o botão flutuante de{" "}
+              <span className="text-[#f95b16] font-bold">Feedback</span> no
+              canto inferior direito a qualquer momento!
             </p>
           </div>
         </section>
