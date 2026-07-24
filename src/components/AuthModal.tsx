@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, User, Ghost, VenetianMask } from "lucide-react";
+import { X, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, User, Eye, EyeOff } from "lucide-react";
 import { auth, googleProvider, isFirebaseConfigured, missingOrPlaceholderKeys } from "../lib/firebase";
 import { signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, sendPasswordResetEmail, fetchSignInMethodsForEmail, updateProfile } from "firebase/auth";
 
@@ -15,6 +15,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -108,8 +109,12 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
         console.log("fetchSignInMethodsForEmail not available or error", e);
       }
 
+      const baseUrl = window.location.hostname.includes("resumind.site") 
+        ? "https://resumind.site" 
+        : window.location.origin;
+
       const actionCodeSettings = {
-        url: window.location.origin + "/redefinir-senha",
+        url: `${baseUrl}/redefinir-senha`,
         handleCodeInApp: true,
       };
 
@@ -301,14 +306,22 @@ export default function AuthModal({ isOpen, onClose, initialTab = "login" }: Aut
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 dark:text-neutral-500 text-slate-400" size={14} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
                     minLength={6}
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-shadow"
+                    className="w-full pl-9 pr-9 py-2 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-shadow"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                    title={showPassword ? "Ocultar senha" : "Exibir senha"}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
                 </div>
                 {tab === "login" && (
                   <div className="flex justify-end mt-1.5">

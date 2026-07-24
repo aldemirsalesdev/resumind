@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { auth, isFirebaseConfigured, missingOrPlaceholderKeys } from "../lib/firebase";
 import { 
   sendPasswordResetEmail, 
@@ -13,11 +13,14 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const oobCode = searchParams.get("oobCode");
+  const emailParam = searchParams.get("email") || "";
 
   // Flow State
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(!!oobCode);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   
@@ -63,8 +66,12 @@ export default function ResetPassword() {
 
     try {
       // Configuration to direct back to our custom reset page
+      const baseUrl = window.location.hostname.includes("resumind.site") 
+        ? "https://resumind.site" 
+        : window.location.origin;
+
       const actionCodeSettings = {
-        url: window.location.origin + "/redefinir-senha",
+        url: `${baseUrl}/redefinir-senha`,
         handleCodeInApp: true,
       };
 
@@ -187,15 +194,23 @@ export default function ResetPassword() {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-3 dark:text-neutral-500 text-slate-400" size={15} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Mínimo de 6 caracteres"
                       required
                       minLength={6}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading}
-                      className="w-full pl-10 pr-3 py-2.5 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-all"
+                      className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-3 text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                      title={showPassword ? "Ocultar senha" : "Exibir senha"}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
                   </div>
                 </div>
 
@@ -206,15 +221,23 @@ export default function ResetPassword() {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-3 dark:text-neutral-500 text-slate-400" size={15} />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       placeholder="Repita a mesma senha acima"
                       required
                       minLength={6}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={loading}
-                      className="w-full pl-10 pr-3 py-2.5 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-all"
+                      className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl border dark:border-neutral-800 border-slate-200 dark:bg-neutral-900 bg-white dark:text-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#f95b16] transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-3 text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors cursor-pointer"
+                      title={showConfirmPassword ? "Ocultar senha" : "Exibir senha"}
+                    >
+                      {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
                   </div>
                 </div>
 
