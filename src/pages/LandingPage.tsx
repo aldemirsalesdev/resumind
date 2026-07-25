@@ -100,19 +100,54 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
         const realReviews = querySnapshot.docs
           .map((doc) => {
             const data = doc.data();
-            let name = data.userName?.trim() || "";
+            const rawName = (data.userName || "").trim();
+            const rawEmail = (data.userEmail || "").trim();
+
             let publicName = "Usuário Verificado";
 
-            if (name && name.toLowerCase() !== "anonymous" && name.length > 0) {
-              const parts = name.split(" ");
-              if (parts.length > 1) {
-                publicName = `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
-              } else {
-                publicName = parts[0];
+            // Determine formatted name: First Name + Capitalized Last Initial + dot
+            let nameSource = rawName;
+            if (!nameSource || nameSource.toLowerCase() === "anonymous") {
+              if (rawEmail && rawEmail.toLowerCase() !== "anonymous" && rawEmail.includes("@")) {
+                nameSource = rawEmail.split("@")[0];
               }
-            } else if (data.userEmail && data.userEmail !== "anonymous") {
-              const emailPrefix = data.userEmail.split("@")[0];
-              publicName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+            }
+
+            if (nameSource && nameSource.toLowerCase() !== "anonymous") {
+              // Replace separators (dots, underscores, dashes) with spaces
+              let sanitized = nameSource.replace(/[\._-]/g, " ").trim();
+              // Split merged 'keyllamarley' into 'keylla marley'
+              sanitized = sanitized.replace(/keyllamarley/gi, "keylla marley");
+
+              const parts = sanitized.split(/\s+/).filter(Boolean);
+
+              if (parts.length > 0) {
+                const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+
+                if (parts.length > 1) {
+                  // Find the first surname after first name that has length > 1 (e.g. "marley")
+                  // If none, fallback to the last part (e.g. "a" in "rhaniel a")
+                  const surnameCandidate = parts.slice(1).find(p => p.replace(/[^a-zA-ZáéíóúÁÉÍÓÚâêîôûÂÊÎÔÛãõÃÕçÇ]/g, "").length > 1);
+                  const initialTarget = surnameCandidate || parts[parts.length - 1];
+
+                  const match = initialTarget.match(/[a-zA-ZáéíóúÁÉÍÓÚâêîôûÂÊÎÔÛãõÃÕçÇ]/);
+                  if (match) {
+                    publicName = `${firstName} ${match[0].toUpperCase()}.`;
+                  } else {
+                    publicName = firstName;
+                  }
+                } else {
+                  publicName = firstName;
+                }
+              }
+            }
+
+            let roleDisplay = "Usuário Verificado";
+            const ctx = (data.context || "").trim();
+            if (ctx === "Editor/Review" || ctx === "editor" || ctx === "Review") {
+              roleDisplay = "Otimização de Currículo";
+            } else if (ctx && ctx !== "Geral" && ctx !== "geral" && ctx !== "general") {
+              roleDisplay = ctx;
             }
 
             return {
@@ -120,7 +155,7 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
               rating: Number(data.rating) || 5,
               feedback: data.feedback?.trim() || "",
               userName: publicName,
-              role: data.context || "Usuário da Plataforma",
+              role: roleDisplay,
               createdAt: data.createdAt,
               liked: data.liked ?? true,
               context: data.context || "Geral",
@@ -790,12 +825,12 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
                     <div className="w-10 h-10 rounded-full bg-[#f95b16]/10 border border-[#f95b16]/20 flex items-center justify-center font-bold text-[#f95b16] text-sm shrink-0">
                       {review.userName ? review.userName.charAt(0).toUpperCase() : "U"}
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-sm dark:text-white text-slate-900 tracking-tight truncate">
+                    <div className="min-w-0 flex flex-col justify-center">
+                      <h4 className="font-semibold text-sm dark:text-white text-slate-900 leading-snug truncate">
                         {review.userName}
                       </h4>
-                      <p className="text-[11px] dark:text-neutral-400 text-slate-500 font-medium truncate">
-                        {review.role || "Usuário da Plataforma"}
+                      <p className="text-[11px] dark:text-neutral-400 text-slate-500 font-medium truncate mt-0.5">
+                        {review.role || "Usuário Verificado"}
                       </p>
                     </div>
                   </div>
