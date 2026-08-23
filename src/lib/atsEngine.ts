@@ -522,16 +522,6 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
         type: "warning",
         message: "Especifique quais tecnologias, frameworks ou ferramentas você utilizou em cada um dos projetos listados."
       });
-    } else {
-      detectedIssues.push({
-        id: "tecnologias_projetos",
-        label: "Tecnologias incluídas nos projetos",
-        severity: "SUGGESTION",
-        pointsDeducted: 0,
-        category: "Sugestões",
-        type: "info",
-        message: "É recomendável incluir tecnologias específicas nos títulos ou tags de seus projetos para melhor indexação."
-      });
     }
 
     if (shortDesc) {
@@ -739,37 +729,6 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
     });
   }
 
-  // Compile standard Sugestões that don't reduce the score
-  detectedIssues.push({
-    id: "detalhar_projeto",
-    label: "Melhor detalhamento de projetos",
-    severity: "SUGGESTION",
-    pointsDeducted: 0,
-    category: "Sugestões",
-    type: "info",
-    message: "Detalhe melhor as responsabilidades, metas atingidas e seu papel em cada um de seus projetos."
-  });
-
-  detectedIssues.push({
-    id: "fortalecer_resultados",
-    label: "Fortalecer resultados",
-    severity: "SUGGESTION",
-    pointsDeducted: 0,
-    category: "Sugestões",
-    type: "info",
-    message: "Fortaleça suas frases usando verbos de ação dinâmicos e focados em entrega de valor profissional."
-  });
-
-  detectedIssues.push({
-    id: "impacto_descricoes",
-    label: "Método STAR/CAR nas descrições",
-    severity: "SUGGESTION",
-    pointsDeducted: 0,
-    category: "Sugestões",
-    type: "info",
-    message: "Procure organizar a descrição das atividades no formato de Contexto, Ação e Resultado para melhorar a legibilidade de sistemas ATS."
-  });
-
   // SUM OF ENGINE SCORE (strictly between 0 and 90) before advanced checks
   
   // --- Advanced Quality & Spelling / Coherence Check ---
@@ -829,6 +788,7 @@ export function calculateDeterministicScore(rawData: any): AtsScoreResult {
 
 // Advanced text and spelling validation dictionary & scanning functions
 const PT_TYPOS = [
+  // Gramática e grafia comum
   { wrong: "atraz", correct: "atrás", explanation: "O correto é 'atrás' (com 's' e acento), indicando posição ou tempo decorrido." },
   { wrong: "atrazado", correct: "atrasado", explanation: "O correto é 'atrasado' (com 's')." },
   { wrong: "atrazar", correct: "atrasar", explanation: "O correto é 'atrasar' (com 's')." },
@@ -845,7 +805,7 @@ const PT_TYPOS = [
   { wrong: "concerteza", correct: "com certeza", explanation: "A expressão correta é escrita separada: 'com certeza'." },
   { wrong: "seje", correct: "seja", explanation: "A forma correta do verbo ser é 'seja'." },
   { wrong: "esteje", correct: "esteja", explanation: "A forma correta do verbo estar é 'esteja'." },
-  { wrong: "menas", correct: "menos", explanation: "A palavra 'menas' não existe. Use sempre 'menos', mesmo para palavras femininas." },
+  { wrong: "menas", correct: "menos", explanation: "A palavra 'menas' não existe. Use sempre 'menos'." },
   { wrong: "pobrema", correct: "problema", explanation: "O correto é 'problema'." },
   { wrong: "asterístico", correct: "asterisco", explanation: "O correto é 'asterisco'." },
   { wrong: "beneficiente", correct: "beneficente", explanation: "O correto é 'beneficente'." },
@@ -859,16 +819,211 @@ const PT_TYPOS = [
   { wrong: "desenvolvidora", correct: "desenvolvedora", explanation: "O correto é 'desenvolvedora'." },
   { wrong: "geremte", correct: "gerente", explanation: "O correto é 'gerente' (com 'n')." },
   { wrong: "atendimeto", correct: "atendimento", explanation: "O correto é 'atendimento' (com 'n')." },
-  { wrong: "comunicacao", correct: "comunicação", explanation: "O correto é 'comunicação' (com til e cedilha)." },
-  { wrong: "organizacao", correct: "organização", explanation: "O correto é 'organização' (com til e cedilha)." },
-  { wrong: "atencao", correct: "atenção", explanation: "O correto é 'atenção' (com til e cedilha)." },
-  { wrong: "nao", correct: "não", explanation: "O correto é 'não' (com til)." },
-  { wrong: "saude", correct: "saúde", explanation: "O correto é 'saúde' (com acento agudo)." },
-  { wrong: "tecnico", correct: "técnico", explanation: "O correto é 'técnico' (com acento agudo)." },
-  { wrong: "tecnica", correct: "técnica", explanation: "O correto é 'técnica' (com acento agudo)." },
-  { wrong: "experiencia", correct: "experiência", explanation: "O correto é 'experiência' (com acento circunflexo)." },
-  { wrong: "formacao", correct: "formação", explanation: "O correto é 'formação' (com til e cedilha)." },
-  { wrong: "graduacao", correct: "graduação", explanation: "O correto é 'graduação' (com til e cedilha)." },
+  { wrong: "progeto", correct: "projeto", explanation: "O correto é 'projeto' (com 'j')." },
+  { wrong: "progetos", correct: "projetos", explanation: "O correto é 'projetos' (com 'j')." },
+
+  // Falta de acentuação e ç em palavras corporativas/profissionais
+  { wrong: "comunicacao", correct: "comunicação", explanation: "Falta acentuação e ç em 'comunicação'." },
+  { wrong: "comunicacoes", correct: "comunicações", explanation: "Falta acentuação e ç em 'comunicações'." },
+  { wrong: "organizacao", correct: "organização", explanation: "Falta acentuação e ç em 'organização'." },
+  { wrong: "organizacoes", correct: "organizações", explanation: "Falta acentuação e ç em 'organizações'." },
+  { wrong: "atencao", correct: "atenção", explanation: "Falta acentuação e ç em 'atenção'." },
+  { wrong: "nao", correct: "não", explanation: "Falta acentuação (til) em 'não'." },
+  { wrong: "saude", correct: "saúde", explanation: "Falta acento agudo em 'saúde'." },
+  { wrong: "tecnico", correct: "técnico", explanation: "Falta acento agudo em 'técnico'." },
+  { wrong: "tecnica", correct: "técnica", explanation: "Falta acento agudo em 'técnica'." },
+  { wrong: "tecnicos", correct: "técnicos", explanation: "Falta acento agudo em 'técnicos'." },
+  { wrong: "tecnicas", correct: "técnicas", explanation: "Falta acento agudo em 'técnicas'." },
+  { wrong: "experiencia", correct: "experiência", explanation: "Falta acento circunflexo em 'experiência'." },
+  { wrong: "experiencias", correct: "experiências", explanation: "Falta acento circunflexo em 'experiências'." },
+  { wrong: "formacao", correct: "formação", explanation: "Falta acentuação e ç em 'formação'." },
+  { wrong: "formacoes", correct: "formações", explanation: "Falta acentuação e ç em 'formações'." },
+  { wrong: "graduacao", correct: "graduação", explanation: "Falta acentuação e ç em 'graduação'." },
+  { wrong: "graduacoes", correct: "graduações", explanation: "Falta acentuação e ç em 'graduações'." },
+  { wrong: "pos-graduacao", correct: "pós-graduação", explanation: "Falta acentuação em 'pós-graduação'." },
+  { wrong: "producao", correct: "produção", explanation: "Falta acentuação e ç em 'produção'." },
+  { wrong: "producoes", correct: "produções", explanation: "Falta acentuação e ç em 'produções'." },
+  { wrong: "gestao", correct: "gestão", explanation: "Falta acentuação (til) em 'gestão'." },
+  { wrong: "solucao", correct: "solução", explanation: "Falta acentuação e ç em 'solução'." },
+  { wrong: "solucoes", correct: "soluções", explanation: "Falta acentuação e ç em 'soluções'." },
+  { wrong: "avaliacao", correct: "avaliação", explanation: "Falta acentuação e ç em 'avaliação'." },
+  { wrong: "avaliacoes", correct: "avaliações", explanation: "Falta acentuação e ç em 'avaliações'." },
+  { wrong: "automatizacao", correct: "automatização", explanation: "Falta acentuação e ç em 'automatização'." },
+  { wrong: "otimizacao", correct: "otimização", explanation: "Falta acentuação e ç em 'otimização'." },
+  { wrong: "otimizacoes", correct: "otimizações", explanation: "Falta acentuação e ç em 'otimizações'." },
+  { wrong: "implementacao", correct: "implementação", explanation: "Falta acentuação e ç em 'implementação'." },
+  { wrong: "implementacoes", correct: "implementações", explanation: "Falta acentuação e ç em 'implementações'." },
+  { wrong: "integracao", correct: "integração", explanation: "Falta acentuação e ç em 'integração'." },
+  { wrong: "integracoes", correct: "integrações", explanation: "Falta acentuação e ç em 'integrações'." },
+  { wrong: "migracao", correct: "migração", explanation: "Falta acentuação e ç em 'migração'." },
+  { wrong: "migracoes", correct: "migrações", explanation: "Falta acentuação e ç em 'migrações'." },
+  { wrong: "documentacao", correct: "documentação", explanation: "Falta acentuação e ç em 'documentação'." },
+  { wrong: "validacao", correct: "validação", explanation: "Falta acentuação e ç em 'validação'." },
+  { wrong: "validacoes", correct: "validações", explanation: "Falta acentuação e ç em 'validações'." },
+  { wrong: "inovacao", correct: "inovação", explanation: "Falta acentuação e ç em 'inovação'." },
+  { wrong: "inovacoes", correct: "inovações", explanation: "Falta acentuação e ç em 'inovações'." },
+  { wrong: "execucao", correct: "execução", explanation: "Falta acentuação e ç em 'execução'." },
+  { wrong: "execucoes", correct: "execuções", explanation: "Falta acentuação e ç em 'execuções'." },
+  { wrong: "participacao", correct: "participação", explanation: "Falta acentuação e ç em 'participação'." },
+  { wrong: "participacoes", correct: "participações", explanation: "Falta acentuação e ç em 'participações'." },
+  { wrong: "elaboracao", correct: "elaboração", explanation: "Falta acentuação e ç em 'elaboração'." },
+  { wrong: "construcao", correct: "construção", explanation: "Falta acentuação e ç em 'construção'." },
+  { wrong: "construcoes", correct: "construções", explanation: "Falta acentuação e ç em 'construções'." },
+  { wrong: "distribuicao", correct: "distribuição", explanation: "Falta acentuação e ç em 'distribuição'." },
+  { wrong: "orientacao", correct: "orientação", explanation: "Falta acentuação e ç em 'orientação'." },
+  { wrong: "instalacao", correct: "instalação", explanation: "Falta acentuação e ç em 'instalação'." },
+  { wrong: "instalacoes", correct: "instalações", explanation: "Falta acentuação e ç em 'instalações'." },
+  { wrong: "configuracao", correct: "configuração", explanation: "Falta acentuação e ç em 'configuração'." },
+  { wrong: "configuracoes", correct: "configurações", explanation: "Falta acentuação e ç em 'configurações'." },
+  { wrong: "manutencao", correct: "manutenção", explanation: "Falta acentuação e ç em 'manutenção'." },
+  { wrong: "manutencoes", correct: "manutenções", explanation: "Falta acentuação e ç em 'manutenções'." },
+  { wrong: "administracao", correct: "administração", explanation: "Falta acentuação e ç em 'administração'." },
+  { wrong: "qualificacao", correct: "qualificação", explanation: "Falta acentuação e ç em 'qualificação'." },
+  { wrong: "qualificacoes", correct: "qualificações", explanation: "Falta acentuação e ç em 'qualificações'." },
+  { wrong: "certificacao", correct: "certificação", explanation: "Falta acentuação e ç em 'certificação'." },
+  { wrong: "certificacoes", correct: "certificações", explanation: "Falta acentuação e ç em 'certificações'." },
+  { wrong: "direcao", correct: "direção", explanation: "Falta acentuação e ç em 'direção'." },
+  { wrong: "operacao", correct: "operação", explanation: "Falta acentuação e ç em 'operação'." },
+  { wrong: "operacoes", correct: "operações", explanation: "Falta acentuação e ç em 'operações'." },
+  { wrong: "coordenacao", correct: "coordenação", explanation: "Falta acentuação e ç em 'coordenação'." },
+  { wrong: "supervisao", correct: "supervisão", explanation: "Falta acentuação e ç em 'supervisão'." },
+  { wrong: "supervisoes", correct: "supervisões", explanation: "Falta acentuação e ç em 'supervisões'." },
+  { wrong: "funcao", correct: "função", explanation: "Falta acentuação e ç em 'função'." },
+  { wrong: "funcoes", correct: "funções", explanation: "Falta acentuação e ç em 'funções'." },
+  { wrong: "promocao", correct: "promoção", explanation: "Falta acentuação e ç em 'promoção'." },
+  { wrong: "promocoes", correct: "promoções", explanation: "Falta acentuação e ç em 'promoções'." },
+  { wrong: "definicao", correct: "definição", explanation: "Falta acentuação e ç em 'definição'." },
+  { wrong: "definicoes", correct: "definições", explanation: "Falta acentuação e ç em 'definições'." },
+  { wrong: "negociacao", correct: "negociação", explanation: "Falta acentuação e ç em 'negociação'." },
+  { wrong: "negociacoes", correct: "negociações", explanation: "Falta acentuação e ç em 'negociações'." },
+  { wrong: "revisao", correct: "revisão", explanation: "Falta acentuação em 'revisão'." },
+  { wrong: "revisoes", correct: "revisões", explanation: "Falta acentuação em 'revisões'." },
+  { wrong: "apresentacao", correct: "apresentação", explanation: "Falta acentuação e ç em 'apresentação'." },
+  { wrong: "apresentacoes", correct: "apresentações", explanation: "Falta acentuação e ç em 'apresentações'." },
+  { wrong: "captacao", correct: "captação", explanation: "Falta acentuação e ç em 'captação'." },
+  { wrong: "retencao", correct: "retenção", explanation: "Falta acentuação e ç em 'retenção'." },
+  { wrong: "alocacao", correct: "alocação", explanation: "Falta acentuação e ç em 'alocação'." },
+  { wrong: "padronizacao", correct: "padronização", explanation: "Falta acentuação e ç em 'padronização'." },
+  { wrong: "analise", correct: "análise", explanation: "Falta acento agudo em 'análise'." },
+  { wrong: "analises", correct: "análises", explanation: "Falta acento agudo em 'análises'." },
+  { wrong: "area", correct: "área", explanation: "Falta acento agudo em 'área'." },
+  { wrong: "areas", correct: "áreas", explanation: "Falta acento agudo em 'áreas'." },
+  { wrong: "nivel", correct: "nível", explanation: "Falta acento agudo em 'nível'." },
+  { wrong: "niveis", correct: "níveis", explanation: "Falta acento agudo em 'níveis'." },
+  { wrong: "periodo", correct: "período", explanation: "Falta acento agudo em 'período'." },
+  { wrong: "periodos", correct: "períodos", explanation: "Falta acento agudo em 'períodos'." },
+  { wrong: "codigo", correct: "código", explanation: "Falta acento agudo em 'código'." },
+  { wrong: "codigos", correct: "códigos", explanation: "Falta acento agudo em 'códigos'." },
+  { wrong: "modulo", correct: "módulo", explanation: "Falta acento agudo em 'módulo'." },
+  { wrong: "modulos", correct: "módulos", explanation: "Falta acento agudo em 'módulos'." },
+  { wrong: "relatorio", correct: "relatório", explanation: "Falta acento agudo em 'relatório'." },
+  { wrong: "relatorios", correct: "relatórios", explanation: "Falta acento agudo em 'relatórios'." },
+  { wrong: "estrategia", correct: "estratégia", explanation: "Falta acento agudo em 'estratégia'." },
+  { wrong: "estrategias", correct: "estratégias", explanation: "Falta acento agudo em 'estratégias'." },
+  { wrong: "estrategico", correct: "estratégico", explanation: "Falta acento agudo em 'estratégico'." },
+  { wrong: "estrategica", correct: "estratégica", explanation: "Falta acento agudo em 'estratégica'." },
+  { wrong: "estrategicos", correct: "estratégicos", explanation: "Falta acento agudo em 'estratégicos'." },
+  { wrong: "estrategicas", correct: "estratégicas", explanation: "Falta acento agudo em 'estratégicas'." },
+  { wrong: "logistica", correct: "logística", explanation: "Falta acento agudo em 'logística'." },
+  { wrong: "politica", correct: "política", explanation: "Falta acento agudo em 'política'." },
+  { wrong: "politicas", correct: "políticas", explanation: "Falta acento agudo em 'políticas'." },
+  { wrong: "estatistica", correct: "estatística", explanation: "Falta acento agudo em 'estatística'." },
+  { wrong: "estatisticas", correct: "estatísticas", explanation: "Falta acento agudo em 'estatísticas'." },
+  { wrong: "metrica", correct: "métrica", explanation: "Falta acento agudo em 'métrica'." },
+  { wrong: "metricas", correct: "métricas", explanation: "Falta acento agudo em 'métricas'." },
+  { wrong: "especifico", correct: "específico", explanation: "Falta acento agudo em 'específico'." },
+  { wrong: "especifica", correct: "específica", explanation: "Falta acento agudo em 'específica'." },
+  { wrong: "especificos", correct: "específicos", explanation: "Falta acento agudo em 'específicos'." },
+  { wrong: "especificas", correct: "específicas", explanation: "Falta acento agudo em 'específicas'." },
+  { wrong: "critico", correct: "crítico", explanation: "Falta acento agudo em 'crítico'." },
+  { wrong: "critica", correct: "crítica", explanation: "Falta acento agudo em 'crítica'." },
+  { wrong: "diagnostico", correct: "diagnóstico", explanation: "Falta acento agudo em 'diagnóstico'." },
+  { wrong: "diagnosticos", correct: "diagnósticos", explanation: "Falta acento agudo em 'diagnósticos'." },
+  { wrong: "autonomo", correct: "autônomo", explanation: "Falta acento circunflexo em 'autônomo'." },
+  { wrong: "autonoma", correct: "autônoma", explanation: "Falta acento circunflexo em 'autônoma'." },
+  { wrong: "publico", correct: "público", explanation: "Falta acento agudo em 'público'." },
+  { wrong: "publicos", correct: "públicos", explanation: "Falta acento agudo em 'públicos'." },
+  { wrong: "fisico", correct: "físico", explanation: "Falta acento agudo em 'físico'." },
+  { wrong: "fisica", correct: "física", explanation: "Falta acento agudo em 'física'." },
+  { wrong: "quimico", correct: "químico", explanation: "Falta acento agudo em 'químico'." },
+  { wrong: "quimica", correct: "química", explanation: "Falta acento agudo em 'química'." },
+  { wrong: "biologico", correct: "biológico", explanation: "Falta acento agudo em 'biológico'." },
+  { wrong: "unico", correct: "único", explanation: "Falta acento agudo em 'único'." },
+  { wrong: "unica", correct: "única", explanation: "Falta acento agudo em 'única'." },
+  { wrong: "numero", correct: "número", explanation: "Falta acento agudo em 'número'." },
+  { wrong: "numeros", correct: "números", explanation: "Falta acento agudo em 'números'." },
+  { wrong: "maximo", correct: "máximo", explanation: "Falta acento agudo em 'máximo'." },
+  { wrong: "minimo", correct: "mínimo", explanation: "Falta acento agudo em 'mínimo'." },
+  { wrong: "proximo", correct: "próximo", explanation: "Falta acento agudo em 'próximo'." },
+  { wrong: "proximos", correct: "próximos", explanation: "Falta acento agudo em 'próximos'." },
+  { wrong: "ultimo", correct: "último", explanation: "Falta acento agudo em 'último'." },
+  { wrong: "ultima", correct: "última", explanation: "Falta acento agudo em 'última'." },
+  { wrong: "ultimos", correct: "últimos", explanation: "Falta acento agudo em 'últimos'." },
+  { wrong: "ultimas", correct: "últimas", explanation: "Falta acento agudo em 'últimas'." },
+  { wrong: "rapido", correct: "rápido", explanation: "Falta acento agudo em 'rápido'." },
+  { wrong: "rapida", correct: "rápida", explanation: "Falta acento agudo em 'rápida'." },
+  { wrong: "facil", correct: "fácil", explanation: "Falta acento agudo em 'fácil'." },
+  { wrong: "dificil", correct: "difícil", explanation: "Falta acento agudo em 'difícil'." },
+  { wrong: "agil", correct: "ágil", explanation: "Falta acento agudo em 'ágil'." },
+  { wrong: "util", correct: "útil", explanation: "Falta acento agudo em 'útil'." },
+  { wrong: "gerencia", correct: "gerência", explanation: "Falta acento circunflexo em 'gerência' (substantivo)." },
+  { wrong: "gerencias", correct: "gerências", explanation: "Falta acento circunflexo em 'gerências'." },
+  { wrong: "exigencia", correct: "exigência", explanation: "Falta acento circunflexo em 'exigência'." },
+  { wrong: "exigencias", correct: "exigências", explanation: "Falta acento circunflexo em 'exigências'." },
+  { wrong: "eficiencia", correct: "eficiência", explanation: "Falta acento circunflexo em 'eficiência'." },
+  { wrong: "tendencia", correct: "tendência", explanation: "Falta acento circunflexo em 'tendência'." },
+  { wrong: "tendencias", correct: "tendências", explanation: "Falta acento circunflexo em 'tendências'." },
+  { wrong: "sequencia", correct: "sequência", explanation: "Falta acento circunflexo em 'sequência'." },
+  { wrong: "referencia", correct: "referência", explanation: "Falta acento circunflexo em 'referência'." },
+  { wrong: "referencias", correct: "referências", explanation: "Falta acento circunflexo em 'referências'." },
+  { wrong: "frequencia", correct: "frequência", explanation: "Falta acento circunflexo em 'frequência'." },
+  { wrong: "conferencia", correct: "conferência", explanation: "Falta acento circunflexo em 'conferência'." },
+  { wrong: "assistencia", correct: "assistência", explanation: "Falta acento circunflexo em 'assistência'." },
+  { wrong: "residencia", correct: "residência", explanation: "Falta acento circunflexo em 'residência'." },
+  { wrong: "competencia", correct: "competência", explanation: "Falta acento circunflexo em 'competência'." },
+  { wrong: "competencias", correct: "competências", explanation: "Falta acento circunflexo em 'competências'." },
+  { wrong: "permanencia", correct: "permanência", explanation: "Falta acento circunflexo em 'permanência'." },
+  { wrong: "urgencia", correct: "urgência", explanation: "Falta acento circunflexo em 'urgência'." },
+  { wrong: "emergencia", correct: "emergência", explanation: "Falta acento circunflexo em 'emergência'." },
+  { wrong: "agencia", correct: "agência", explanation: "Falta acento circunflexo em 'agência'." },
+  { wrong: "agencias", correct: "agências", explanation: "Falta acento circunflexo em 'agências'." },
+  { wrong: "historico", correct: "histórico", explanation: "Falta acento agudo em 'histórico'." },
+  { wrong: "historicos", correct: "históricos", explanation: "Falta acento agudo em 'históricos'." },
+  { wrong: "negocio", correct: "negócio", explanation: "Falta acento agudo em 'negócio'." },
+  { wrong: "negocios", correct: "negócios", explanation: "Falta acento agudo em 'negócios'." },
+  { wrong: "inicio", correct: "início", explanation: "Falta acento agudo em 'início'." },
+  { wrong: "inicios", correct: "inícios", explanation: "Falta acento agudo em 'inícios'." },
+  { wrong: "usuario", correct: "usuário", explanation: "Falta acento agudo em 'usuário'." },
+  { wrong: "usuarios", correct: "usuários", explanation: "Falta acento agudo em 'usuários'." },
+  { wrong: "servico", correct: "serviço", explanation: "Falta cedilha em 'serviço'." },
+  { wrong: "servicos", correct: "serviços", explanation: "Falta cedilha em 'serviços'." },
+  { wrong: "grafico", correct: "gráfico", explanation: "Falta acento agudo em 'gráfico'." },
+  { wrong: "graficos", correct: "gráficos", explanation: "Falta acento agudo em 'gráficos'." },
+  { wrong: "pagina", correct: "página", explanation: "Falta acento agudo em 'página'." },
+  { wrong: "paginas", correct: "páginas", explanation: "Falta acento agudo em 'páginas'." },
+  { wrong: "conteudo", correct: "conteúdo", explanation: "Falta acento agudo em 'conteúdo'." },
+  { wrong: "conteudos", correct: "conteúdos", explanation: "Falta acento agudo em 'conteúdos'." },
+  { wrong: "veiculo", correct: "veículo", explanation: "Falta acento agudo em 'veículo'." },
+  { wrong: "veiculos", correct: "veículos", explanation: "Falta acento agudo em 'veículos'." },
+  { wrong: "curriculo", correct: "currículo", explanation: "Falta acento agudo em 'currículo'." },
+  { wrong: "curriculos", correct: "currículos", explanation: "Falta acento agudo em 'currículos'." },
+  { wrong: "ingles", correct: "inglês", explanation: "Falta acento circunflexo em 'inglês'." },
+  { wrong: "portugues", correct: "português", explanation: "Falta acento circunflexo em 'português'." },
+  { wrong: "frances", correct: "francês", explanation: "Falta acento circunflexo em 'francês'." },
+  { wrong: "japones", correct: "japonês", explanation: "Falta acento circunflexo em 'japonês'." },
+  { wrong: "chines", correct: "chinês", explanation: "Falta acento circunflexo em 'chinês'." },
+  { wrong: "alemao", correct: "alemão", explanation: "Falta acentuação (til) em 'alemão'." },
+  { wrong: "voce", correct: "você", explanation: "Falta acento circunflexo em 'você'." },
+  { wrong: "tambem", correct: "também", explanation: "Falta acento agudo em 'também'." },
+  { wrong: "porem", correct: "porém", explanation: "Falta acento agudo em 'porém'." },
+  { wrong: "alem", correct: "além", explanation: "Falta acento agudo em 'além'." },
+  { wrong: "ate", correct: "até", explanation: "Falta acento agudo em 'até'." },
+  { wrong: "lider", correct: "líder", explanation: "Falta acento agudo em 'líder'." },
+  { wrong: "lideres", correct: "líderes", explanation: "Falta acento agudo em 'líderes'." },
+  { wrong: "lideranca", correct: "liderança", explanation: "Falta cedilha em 'liderança'." },
+  { wrong: "liderancas", correct: "lideranças", explanation: "Falta cedilha em 'lideranças'." },
+  { wrong: "visao", correct: "visão", explanation: "Falta til em 'visão'." },
+  { wrong: "missao", correct: "missão", explanation: "Falta til em 'missão'." },
 ];
 
 function checkSpellingErrorsInText(text: string, fieldName: string) {
@@ -950,6 +1105,21 @@ function checkNonsenseInText(text: string, fieldName: string) {
     }
   });
 
+  // Check for common filler / gibberish words like 'aaa', 'bbb', 'asdf', 'qwerty', etc.
+  const gibberishWordRegex = /\b(aaa|bbb|ccc|ddd|eee|fff|ggg|hhh|iii|jjj|kkk|lll|mmm|nnn|ooo|ppp|qqq|rrr|sss|ttt|uuu|vvv|www|xxx|yyy|zzz|asdf|qwerty|zxcv|123|1234|teste|test)\b/i;
+  const gibberishMatch = text.match(gibberishWordRegex);
+  if (gibberishMatch) {
+    found.push({
+      id: `nonsense_gibberish_${fieldName}`,
+      label: `Texto sem sentido ou de teste ("${gibberishMatch[0]}")`,
+      severity: "CRITICAL",
+      pointsDeducted: 4,
+      category: "Erros",
+      type: "error",
+      message: `No campo de ${fieldName}, identificamos o termo de teste/preenchimento "${gibberishMatch[0]}". Preencha com informações profissionais reais.`
+    });
+  }
+
   const doubleWordRegex = /\b(o|a|que|para|de|em|com|um|uma|os|as|do|da|dos|das|no|na|nos|nas)\s+\1\b/i;
   const doubleMatch = text.match(doubleWordRegex);
   if (doubleMatch) {
@@ -964,12 +1134,12 @@ function checkNonsenseInText(text: string, fieldName: string) {
     });
   }
 
-  const repeatLetterRegex = /([a-z])\1{3,}/i;
+  const repeatLetterRegex = /([a-z])\1{2,}/i;
   const repeatMatch = text.match(repeatLetterRegex);
-  if (repeatMatch && !textLower.includes("https://") && !textLower.includes("http://")) {
+  if (repeatMatch && !textLower.includes("https://") && !textLower.includes("http://") && !found.some(f => f.id.startsWith(`nonsense_gibberish_${fieldName}`))) {
     found.push({
       id: `nonsense_repeat_letter_${fieldName}`,
-      label: `Repetição excessiva de caracteres`,
+      label: `Repetição de caracteres ("${repeatMatch[0]}")`,
       severity: "CRITICAL",
       pointsDeducted: 3,
       category: "Erros",
@@ -1448,16 +1618,7 @@ export function evaluateProfessionalSummary(summary: string, resumeData: any) {
         pointsDeducted: 0,
         category: "Sugestões" as const,
         type: "success" as const,
-        message: "Excelente resumo profissional. O resumo apresenta sua experiência, competências e objetivo de forma clara, facilitando a leitura tanto para recrutadores quanto para sistemas ATS."
-      });
-      issues.push({
-        id: "summary_ats_optimized",
-        label: "Resumo otimizado para ATS",
-        severity: "SUGGESTION" as const,
-        pointsDeducted: 0,
-        category: "Sugestões" as const,
-        type: "success" as const,
-        message: "Seu resumo apresenta uma boa estrutura e utiliza termos relevantes para processos seletivos. Apenas pequenos refinamentos podem aumentar ainda mais sua compatibilidade com sistemas ATS."
+        message: "Excelente resumo profissional. O resumo apresenta sua experiência, competências e objetivos de forma clara, facilitando a leitura por recrutadores e sistemas ATS."
       });
     } else {
       issues.push({

@@ -1080,6 +1080,15 @@ export default function ReviewResume() {
                             const isSuggestionOrRecommendation = category.toLowerCase().includes("sugest") || category.toLowerCase().includes("recomend");
                             const IconComponent = isSuggestionOrRecommendation ? Lightbulb : AlertCircle;
 
+                            // Sort messages so LGPD/Foto message appears FIRST in the list
+                            const sortedMessages = [...data.messages].sort((a: string, b: string) => {
+                              const aIsLgpd = a.toLowerCase().includes("lgpd") || a.toLowerCase().includes("foto");
+                              const bIsLgpd = b.toLowerCase().includes("lgpd") || b.toLowerCase().includes("foto");
+                              if (aIsLgpd && !bIsLgpd) return -1;
+                              if (!aIsLgpd && bIsLgpd) return 1;
+                              return 0;
+                            });
+
                             return (
                               <div
                                 key={`grouped-feedback-${i}`}
@@ -1090,11 +1099,11 @@ export default function ReviewResume() {
                                   <span className="font-semibold block mb-1.5">
                                     {category}
                                   </span>
-                                  {data.messages.length === 1 ? (
-                                    <p className="dark:text-neutral-300 text-slate-700">{data.messages[0]}</p>
+                                  {sortedMessages.length === 1 ? (
+                                    <p className="dark:text-neutral-300 text-slate-700">{sortedMessages[0]}</p>
                                   ) : (
                                     <ul className="list-disc pl-4 space-y-1.5 dark:text-neutral-300 text-slate-700">
-                                      {data.messages.map((msg: string, mIdx: number) => (
+                                      {sortedMessages.map((msg: string, mIdx: number) => (
                                         <li key={mIdx}>{msg}</li>
                                       ))}
                                     </ul>

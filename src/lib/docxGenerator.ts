@@ -63,8 +63,9 @@ export const generateDocx = async (structured: any, templateId: string) => {
   // Helper to join contact items cleanly
   const contactItems: string[] = [];
   if (personalInfo.location) contactItems.push(personalInfo.location);
-  if (personalInfo.email) contactItems.push(personalInfo.email);
-  if (personalInfo.phone) contactItems.push(personalInfo.phone);
+  if (personalInfo.email) contactItems.push(`Contatos: ${personalInfo.email}`);
+  else if (personalInfo.phone) contactItems.push(`Contatos: ${personalInfo.phone}`);
+  if (personalInfo.email && personalInfo.phone) contactItems.push(personalInfo.phone);
   if (cleanLinkedin) contactItems.push(cleanLinkedin);
   if (personalInfo.website) contactItems.push(personalInfo.website);
 

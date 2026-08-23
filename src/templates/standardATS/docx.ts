@@ -125,10 +125,16 @@ export const generateStandardATSDocx = async (structured: any, templateId = "sta
     }
 
     // Modern layout models (standard, harvard, jakes, executive, ats_clean)
+    const rawEmail = personalInfo.email ? personalInfo.email.trim() : "";
+    const rawPhone = personalInfo.phone ? personalInfo.phone.trim() : "";
+
+    const emailFormatted = rawEmail ? `Contatos: ${rawEmail}` : null;
+    const phoneFormatted = (!rawEmail && rawPhone) ? `Contatos: ${rawPhone}` : (rawPhone || null);
+
     const line1Items = [
-      personalInfo.location,
-      personalInfo.email,
-      personalInfo.phone,
+      personalInfo.location ? personalInfo.location.trim() : null,
+      emailFormatted,
+      phoneFormatted,
     ].filter((item) => typeof item === "string" && item.trim() !== "");
 
     const rawLine2 = [

@@ -152,10 +152,16 @@ export const TemplatePdfDocument = ({ data, templateId = "standard" }: TemplateP
     }
 
     // Modern layout models (standard, harvard, jakes, executive, ats_clean)
+    const rawEmail = sanitizeContactField(personalInfo.email);
+    const rawPhone = sanitizeContactField(personalInfo.phone);
+
+    const emailFormatted = rawEmail ? `Contatos: ${rawEmail}` : null;
+    const phoneFormatted = (!rawEmail && rawPhone) ? `Contatos: ${rawPhone}` : rawPhone;
+
     const line1Items = [
       sanitizeContactField(personalInfo.location),
-      sanitizeContactField(personalInfo.email),
-      sanitizeContactField(personalInfo.phone),
+      emailFormatted,
+      phoneFormatted,
     ].filter((item) => typeof item === "string" && item.trim() !== "");
 
     const rawLine2 = [

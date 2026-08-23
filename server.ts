@@ -172,27 +172,24 @@ async function preloadAuthCache() {
   }
 }
 
-async function startServer() {
-  console.log("Starting Node.js Fullstack Server...");
-  const app = express();
-  app.disable("x-powered-by");
-  const PORT = 3000;
+export const app = express();
+app.disable("x-powered-by");
 
-  // 1. Kick off preloading immediately on startup
-  preloadAuthCache().catch(console.error);
+// 1. Kick off preloading immediately on startup
+preloadAuthCache().catch(console.error);
 
-  // 2. Serve from in-memory cache if available to load instantly (0ms)
-  app.get("/__/auth/:file?", (req, res, next) => {
-    const cacheKey = req.path;
-    if (authCache.has(cacheKey)) {
-      const cached = authCache.get(cacheKey)!;
-      res.setHeader("Content-Type", cached.contentType);
-      // Aggressive caching header to tell browser to load instantly from cache next time
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      return res.send(cached.body);
-    }
-    next();
-  });
+// 2. Serve from in-memory cache if available to load instantly (0ms)
+app.get("/__/auth/:file?", (req, res, next) => {
+  const cacheKey = req.path;
+  if (authCache.has(cacheKey)) {
+    const cached = authCache.get(cacheKey)!;
+    res.setHeader("Content-Type", cached.contentType);
+    // Aggressive caching header to tell browser to load instantly from cache next time
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return res.send(cached.body);
+  }
+  next();
+});
 
   // Proxy Firebase Auth custom domain routes to original Firebase handler domain to avoid serving our entire React app inside the popup/iframe
   // Registered BEFORE express.json() to prevent body-parsing streams from hanging the proxy request
@@ -327,7 +324,7 @@ async function startServer() {
         return callback(null, true); // Permite tudo no ambiente de desenvolvimento local
       }
       
-      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".run.app");
+      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".run.app") || origin.endsWith(".vercel.app");
       if (isAllowed) {
         callback(null, true);
       } else {
@@ -1250,24 +1247,6 @@ ${JSON.stringify(structuredData)}`;
     res.json(results);
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
   // Error handler
   app.use(
     (
@@ -1285,13 +1264,36 @@ ${JSON.stringify(structuredData)}`;
     },
   );
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(
-      `Node-Native Server actively listening on http://localhost:${PORT}`,
-    );
-  });
-}
+  async function startServer() {
+    const PORT = 3000;
 
-startServer().catch((err) => {
-  console.error("FAILED TO START SERVER:", err);
-});
+    // Vite middleware for development
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(
+        `Node-Native Server actively listening on http://localhost:${PORT}`,
+      );
+    });
+  }
+
+  if (!process.env.VERCEL) {
+    startServer().catch((err) => {
+      console.error("FAILED TO START SERVER:", err);
+    });
+  }
