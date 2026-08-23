@@ -349,17 +349,24 @@ app.get("/__/auth/:file?", (req, res, next) => {
 
   // Resilient LLM runner helper with Groq as primary and Gemini as fallback
   const runAiQuery = async (prompt: string, options: { jsonMode?: boolean } = {}) => {
-    // 1. Try Groq as the primary engine
+    // 1. Try Groq as the primary engine across supported models
+    const groqModels = [
+      "llama-3.3-70b-versatile",
+      "llama-3.1-70b-versatile",
+      "llama-3.1-8b-instant",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "mixtral-8x7b-32768",
+      "gemma2-9b-it",
+    ];
+
     try {
-      console.log(`[AI Runner] Attempting primary query with Groq (llama-3.3-70b-versatile)...`);
       const client = getGroqClient();
-      let groqRetries = 3;
-      let groqAttempt = 0;
-      while (groqRetries > 0) {
-        groqAttempt++;
+      for (const model of groqModels) {
         try {
+          console.log(`[AI Runner] Attempting Groq query with model: ${model}...`);
           const response = await client.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.0,
             seed: 42,
@@ -367,28 +374,25 @@ app.get("/__/auth/:file?", (req, res, next) => {
           });
           const responseText = response.choices[0]?.message?.content || "";
           if (responseText) {
-            console.log(`[AI Runner] Groq query succeeded on attempt ${groqAttempt}!`);
+            console.log(`[AI Runner] Groq query succeeded with model: ${model}!`);
             return responseText;
           }
         } catch (groqError: any) {
-          console.error(`[AI Runner] Groq API error (attempt ${groqAttempt}): ${groqError?.message || groqError}`);
-          groqRetries--;
-          if (groqRetries > 0) {
-            const delay = groqAttempt * 1500;
-            console.warn(`[AI Runner] Retrying Groq in ${delay}ms...`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          } else {
-            throw groqError; // Throw to trigger Gemini fallback
+          const errMsg = groqError?.message || String(groqError);
+          console.warn(`[AI Runner] Groq model ${model} failed (${errMsg}). Trying next model...`);
+          // If it's not a model availability error (e.g. rate limit), short pause
+          if (groqError?.status === 429) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
       }
     } catch (groqFinalError: any) {
-      console.warn(`[AI Runner] Groq failed completely or is unconfigured. Falling back to Gemini...`, groqFinalError?.message || groqFinalError);
+      console.warn(`[AI Runner] Groq client not available or unconfigured. Falling back to Gemini...`, groqFinalError?.message || groqFinalError);
     }
 
     // 2. Fallback to Gemini if Groq fails or is not configured
     console.warn("[AI Runner] Falling back to Gemini models sequentially...");
-    const geminiModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+    const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
     let lastGeminiError: any = null;
 
     for (const modelName of geminiModels) {
@@ -1142,19 +1146,49 @@ ${JSON.stringify(structuredData)}`;
       } else {
         const client = getGroqClient();
         const start = Date.now();
-        const response = await client.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "user", content: "responder com apenas um caractere: K" },
-          ],
-          max_tokens: 5,
-        });
+        const groqModels = [
+          "llama-3.3-70b-versatile",
+          "llama-3.1-70b-versatile",
+          "llama-3.1-8b-instant",
+          "llama3-70b-8192",
+          "llama3-8b-8192",
+          "mixtral-8x7b-32768",
+          "gemma2-9b-it",
+        ];
+        let workingModel = "";
+        let testResponse = "";
+
+        for (const model of groqModels) {
+          try {
+            const response = await client.chat.completions.create({
+              model,
+              messages: [
+                { role: "user", content: "responder com apenas um caractere: K" },
+              ],
+              max_tokens: 5,
+            });
+            testResponse = response.choices[0]?.message?.content?.trim() || "";
+            workingModel = model;
+            break;
+          } catch {
+            continue;
+          }
+        }
+
         const duration = Date.now() - start;
-        results.groq = {
-          status: "online",
-          message: `API Groq está ativa e respondendo! Latência: ${duration}ms.`,
-          response: response.choices[0]?.message?.content?.trim(),
-        };
+        if (workingModel) {
+          results.groq = {
+            status: "online",
+            message: `API Groq está ativa e respondendo via ${workingModel}! Latência: ${duration}ms.`,
+            response: testResponse,
+            activeModel: workingModel,
+          };
+        } else {
+          results.groq = {
+            status: "error",
+            message: "Nenhum modelo Groq compatível respondeu com a chave fornecida.",
+          };
+        }
       }
     } catch (e: any) {
       results.groq = {
