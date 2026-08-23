@@ -1,14 +1,11 @@
 import { calculateAtsScore } from "./src/lib/atsScore";
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { createProxyMiddleware, responseInterceptor } from "http-proxy-middleware";
 import path from "path";
 import { execSync } from "child_process";
 import fs from "fs";
 import helmet from "helmet";
 import cors from "cors";
-
-import * as pdfParseModule from "pdf-parse";
 
 // --- SECURITY LOG AUDITING WRAPPERS ---
 const originalLog = console.log;
@@ -57,61 +54,35 @@ console.error = (...args: any[]) => {
 };
 // --- END SECURITY LOG AUDITING WRAPPERS ---
 
-// Robust helper to extract plain text from PDF under both ESM/CJS and newer class-based vs legacy function-based pdf-parse versions
+// Robust helper to extract plain text from PDF under both ESM/CJS, Serverless, and newer class-based vs legacy function-based pdf-parse versions
 const extractTextFromPdf = async (fileBuffer: Buffer): Promise<string> => {
-  // 1. Try modern class-based API of pdf-parse v2+
   try {
-    if (pdfParseModule && typeof pdfParseModule.PDFParse === "function") {
-      const parser = new pdfParseModule.PDFParse({ data: fileBuffer });
-      const textResult = await parser.getText();
-      const text = textResult.text || "";
-      await parser.destroy();
-      return text;
+    const pdfModule: any = await import("pdf-parse").catch(() => null);
+    if (pdfModule) {
+      if (typeof pdfModule.PDFParse === "function") {
+        const parser = new pdfModule.PDFParse({ data: fileBuffer });
+        const textResult = await parser.getText();
+        const text = textResult.text || "";
+        await parser.destroy();
+        if (text.trim()) return text;
+      }
+      const defaultExport = pdfModule.default || pdfModule;
+      if (defaultExport && typeof defaultExport.PDFParse === "function") {
+        const parser = new defaultExport.PDFParse({ data: fileBuffer });
+        const textResult = await parser.getText();
+        const text = textResult.text || "";
+        await parser.destroy();
+        if (text.trim()) return text;
+      }
+      if (typeof defaultExport === "function") {
+        const pdfData = await defaultExport(fileBuffer, { max: 0 });
+        if (pdfData && pdfData.text) return pdfData.text;
+      }
     }
   } catch (err) {
-    console.warn(
-      "Class-based PDFParse instantiation failed, trying other paths:",
-      err,
-    );
+    console.warn("Local PDF extraction library failed, proceeding to Gemini OCR fallback:", err);
   }
-
-  // 2. Try default exported class
-  try {
-    const defaultExport = (pdfParseModule as any).default;
-    if (defaultExport && typeof defaultExport.PDFParse === "function") {
-      const parser = new defaultExport.PDFParse({ data: fileBuffer });
-      const textResult = await parser.getText();
-      const text = textResult.text || "";
-      await parser.destroy();
-      return text;
-    }
-  } catch (err) {
-    console.warn("Default export PDFParse instantiation failed:", err);
-  }
-
-  // 3. Fallback to legacy function-based API
-  try {
-    let pdfParser: any = null;
-    if (typeof pdfParseModule === "function") {
-      pdfParser = pdfParseModule;
-    } else if (
-      pdfParseModule &&
-      typeof (pdfParseModule as any).default === "function"
-    ) {
-      pdfParser = (pdfParseModule as any).default;
-    }
-
-    if (typeof pdfParser === "function") {
-      const pdfData = await pdfParser(fileBuffer, { max: 0 });
-      return pdfData.text || "";
-    }
-  } catch (err) {
-    console.error("Legacy pdf-parse function approach failed:", err);
-  }
-
-  throw new Error(
-    "Não foi possível processar o PDF com nenhuma das APIs disponíveis.",
-  );
+  return "";
 };
 
 import { GoogleGenAI } from "@google/genai";
@@ -486,7 +457,7 @@ app.get("/__/auth/:file?", (req, res, next) => {
   };
 
   // API Routes
-  app.post("/api/extract-text", generalApiLimiter, async (req, res) => {
+  app.post(["/api/extract-text", "/extract-text"], generalApiLimiter, async (req, res) => {
     try {
       const { filename = "", mimetype = "", data = "" } = req.body;
       if (!filename || !data) {
@@ -650,7 +621,7 @@ app.get("/__/auth/:file?", (req, res, next) => {
     }
   };
 
-  app.post("/api/analyze-resume", aiLimiter, async (req, res) => {
+  app.post(["/api/analyze-resume", "/analyze-resume"], aiLimiter, async (req, res) => {
     try {
       const { rawText } = req.body;
       if (!rawText)
@@ -915,7 +886,7 @@ ${rawText}`;
     }
   });
 
-  app.post("/api/analyze-grammar", aiLimiter, async (req, res) => {
+  app.post(["/api/analyze-grammar", "/analyze-grammar"], aiLimiter, async (req, res) => {
     try {
       const { structuredData } = req.body;
       if (!structuredData)
@@ -1102,7 +1073,7 @@ ${JSON.stringify(structuredData)}`;
   });
 
   // Secure endpoint to send feedback to a Google Sheets Webhook (Apps Script)
-  app.post("/api/feedback", generalApiLimiter, async (req, res) => {
+  app.post(["/api/feedback", "/feedback"], generalApiLimiter, async (req, res) => {
     try {
       const { userId, userEmail, rating, liked, feedback, context } = req.body;
       
@@ -1269,6 +1240,7 @@ ${JSON.stringify(structuredData)}`;
 
     // Vite middleware for development
     if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
