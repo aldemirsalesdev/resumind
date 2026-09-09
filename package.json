@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/server.cjs",
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:api": "esbuild src/server/api/extract-text.ts --bundle --platform=node --format=esm --packages=external --outfile=api/extract-text.js && esbuild src/server/api/analyze-resume.ts --bundle --platform=node --format=esm --packages=external --outfile=api/analyze-resume.js && esbuild src/server/api/analyze-grammar.ts --bundle --platform=node --format=esm --packages=external --outfile=api/analyze-grammar.js && esbuild src/server/api/feedback.ts --bundle --platform=node --format=esm --packages=external --outfile=api/feedback.js && esbuild src/server/api/diagnostics.ts --bundle --platform=node --format=esm --packages=external --outfile=api/diagnostics.js && esbuild src/server/api/index.ts --bundle --platform=node --format=esm --packages=external --outfile=api/index.js",
+    "build": "npm run build:api && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

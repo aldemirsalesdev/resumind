@@ -86,45 +86,57 @@ export default function AnalyzeResume() {
     setCurrentStepIndex(0);
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-      });
+      let text = "";
 
-      const response = await fetch("/api/extract-text", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          mimetype: file.type,
-          data: base64,
-        }),
-        credentials: "include",
-      });
-
-      const textResponse = await response.text();
-      let responseData;
-      try {
-        responseData = JSON.parse(textResponse);
-      } catch (e) {
-        console.error("API Error Text:", textResponse);
-        const excerpt = textResponse.substring(0, 100);
-        throw new Error(
-          `Ocorreu um erro no servidor. Resposta bruta: ${excerpt}`,
-        );
+      // Leitura imediata do lado do cliente para arquivos de texto (.txt)
+      if (file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt")) {
+        try {
+          text = await file.text();
+        } catch (txtErr) {
+          console.warn("Client-side text reading error:", txtErr);
+        }
       }
 
-      if (!response.ok) {
-        throw new Error(
-          responseData.error || responseData.detail || "Falha ao ler o arquivo",
-        );
-      }
+      if (!text) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+        });
 
-      const { text } = responseData;
+        const response = await fetch("/api/extract-text", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            mimetype: file.type,
+            data: base64,
+          }),
+          credentials: "include",
+        });
+
+        const textResponse = await response.text();
+        let responseData;
+        try {
+          responseData = JSON.parse(textResponse);
+        } catch (e) {
+          console.error("API Error Text:", textResponse);
+          throw new Error(
+            "O servidor encontrou instabilidade temporária ao extrair o texto. Por favor, tente novamente ou envie o currículo em formato DOCX ou PDF legível.",
+          );
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            responseData.error || responseData.detail || "Falha ao processar o arquivo.",
+          );
+        }
+
+        text = responseData.text;
+      }
 
       // console.log("RAW TEXT:", text);
 

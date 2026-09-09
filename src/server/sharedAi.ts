@@ -156,8 +156,27 @@ export const extractTextFromPdf = async (fileBuffer: Buffer): Promise<string> =>
       }
     }
   } catch (err) {
-    console.warn("Local PDF extraction library failed, proceeding to Gemini OCR fallback:", err);
+    console.warn("Local PDF extraction library failed, proceeding to fallback:", err);
   }
+
+  // Native regex fallback for plain text inside PDF content streams
+  try {
+    const rawStr = fileBuffer.toString("binary");
+    const textChunks: string[] = [];
+    const tjRegex = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g;
+    let match;
+    while ((match = tjRegex.exec(rawStr)) !== null) {
+      const decoded = match[1].replace(/\\([()\\])/g, "$1");
+      textChunks.push(decoded);
+    }
+    const joined = textChunks.join(" ").trim();
+    if (joined.length > 30) {
+      return joined;
+    }
+  } catch (regexErr) {
+    console.warn("Regex fallback PDF parser failed:", regexErr);
+  }
+
   return "";
 };
 
@@ -228,14 +247,29 @@ export const extractPhoneFromRawText = (raw: string) => {
   return null;
 };
 
-export function parseRequestBody(req: any): any {
-  if (!req.body) return {};
-  if (typeof req.body === "object") return req.body;
-  if (typeof req.body === "string") {
+export async function parseRequestBody(req: any): Promise<any> {
+  if (req.body) {
+    if (typeof req.body === "object") return req.body;
+    if (typeof req.body === "string") {
+      try {
+        return JSON.parse(req.body);
+      } catch {
+        return {};
+      }
+    }
+  }
+  if (typeof req[Symbol.asyncIterator] === "function" || typeof req.on === "function") {
     try {
-      return JSON.parse(req.body);
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+      }
+      if (chunks.length > 0) {
+        const raw = Buffer.concat(chunks).toString("utf-8");
+        return JSON.parse(raw);
+      }
     } catch {
-      return {};
+      // Ignored
     }
   }
   return {};

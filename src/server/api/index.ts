@@ -1,4 +1,4 @@
-import { applyCors } from "../src/server/sharedAi";
+import { applyCors } from "../sharedAi";
 
 export default function handler(req: any, res: any) {
   if (applyCors(req, res)) return;
