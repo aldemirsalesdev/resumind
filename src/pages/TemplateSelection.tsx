@@ -1,5 +1,5 @@
 import { calculateAtsScore } from "../lib/atsScore";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
@@ -106,6 +106,65 @@ class ThumbnailErrorBoundary extends React.Component<
     }
     return this.props.children;
   }
+}
+
+function TemplateThumbnail({
+  data,
+  templateId,
+  templateName,
+}: {
+  data: any;
+  templateId: string;
+  templateName: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState<number>(0.35);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateScale = () => {
+      const width = el.offsetWidth;
+      if (width > 0) {
+        setScale(width / 794);
+      }
+    };
+
+    updateScale();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateScale);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full aspect-[1/1.414] mt-2 border dark:border-neutral-800 border-slate-200 bg-white pointer-events-none shadow-sm rounded-md overflow-hidden relative z-0"
+    >
+      <div
+        style={{
+          width: "794px",
+          height: "1123px",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          backgroundColor: "#ffffff",
+          color: "#000000",
+        }}
+        className="bg-white text-black select-none pointer-events-none absolute top-0 left-0"
+      >
+        <ThumbnailErrorBoundary templateName={templateName}>
+          <ResumeA4Preview data={data} templateId={templateId} />
+        </ThumbnailErrorBoundary>
+      </div>
+
+      {/* Subtle bottom fade overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/10 pointer-events-none" />
+    </div>
+  );
 }
 
 function TemplateSelectionContent() {
@@ -390,28 +449,12 @@ function TemplateSelectionContent() {
                     </div>
                   </div>
 
-                  {/* Pixel-perfect Thumbnail Scaling using SVG with XHTML namespace */}
-                  <div className="w-full aspect-[1/1.414] mt-2 border dark:border-neutral-800 border-slate-200 bg-white pointer-events-none shadow-sm rounded-md overflow-hidden relative z-0">
-                    <svg viewBox="0 0 794 1123" className="w-full h-full block bg-white" xmlns="http://www.w3.org/2000/svg">
-                      <foreignObject width="794" height="1123">
-                        <div
-                          {...({ xmlns: "http://www.w3.org/1999/xhtml" } as any)}
-                          style={{ width: "794px", height: "1123px", backgroundColor: "#ffffff", color: "#000000" }}
-                          className="bg-white text-black"
-                        >
-                          <ThumbnailErrorBoundary templateName={tpl.name}>
-                            <ResumeA4Preview
-                              data={extractedData}
-                              templateId={tpl.id}
-                            />
-                          </ThumbnailErrorBoundary>
-                        </div>
-                      </foreignObject>
-                    </svg>
-
-                    {/* Subtle bottom fade overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/10 pointer-events-none"></div>
-                  </div>
+                  {/* Native DOM scaled thumbnail */}
+                  <TemplateThumbnail
+                    data={extractedData}
+                    templateId={tpl.id}
+                    templateName={tpl.name}
+                  />
                 </button>
               ))}
             </div>

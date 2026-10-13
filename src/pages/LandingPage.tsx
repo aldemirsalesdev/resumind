@@ -516,9 +516,14 @@ export default function LandingPage({ user }: { user: FirebaseUser | null }) {
                     viewBox="0 0 794 1123"
                     className="max-w-full max-h-full drop-shadow-2xl bg-white border border-neutral-300 pointer-events-none shrink-0"
                     style={{ shapeRendering: "crispEdges" }}
+                    xmlns="http://www.w3.org/2000/svg"
                   >
                     <foreignObject width="794" height="1123">
-                      <div className="w-[794px] h-[1123px] bg-white text-slate-900 font-sans text-left">
+                      <div
+                        {...({ xmlns: "http://www.w3.org/1999/xhtml" } as any)}
+                        style={{ width: "794px", height: "1123px", backgroundColor: "#ffffff", color: "#0f172a" }}
+                        className="w-[794px] h-[1123px] bg-white text-slate-900 font-sans text-left"
+                      >
                         <ResumeA4Preview
                           templateId="ats_clean"
                           data={{
