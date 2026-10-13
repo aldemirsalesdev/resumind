@@ -1,4 +1,4 @@
-import { applyCors, parseRequestBody, runAiQuery } from "../sharedAi";
+import { applyCors, extractJsonString, parseRequestBody, runAiQuery } from "../sharedAi";
 
 export const config = {
   api: {
@@ -56,12 +56,8 @@ Retorne exclusivamente o JSON, sem formatação markdown em torno do texto.`;
       2
     ).slice(0, 25000)}`;
 
-    let responseText = await runAiQuery(systemPrompt, userPrompt, true);
-    let cleanJson = responseText.trim();
-    if (cleanJson.startsWith("```")) {
-      cleanJson = cleanJson.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
-
+    const responseText = await runAiQuery(systemPrompt, userPrompt, true);
+    const cleanJson = extractJsonString(responseText);
     const result = JSON.parse(cleanJson);
     return res.status(200).json(result);
   } catch (err: any) {

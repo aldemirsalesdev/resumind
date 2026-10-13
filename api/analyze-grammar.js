@@ -23,15 +23,48 @@ var getGroqClient = () => {
     );
   return new Groq({ apiKey: key });
 };
-var runAiQuery = async (prompt, options = {}) => {
+var extractJsonString = (raw) => {
+  if (!raw) return "";
+  let clean = raw.trim();
+  if (clean.startsWith("```")) {
+    clean = clean.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+  }
+  const firstBrace = clean.indexOf("{");
+  const firstBracket = clean.indexOf("[");
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    startIdx = firstBrace;
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+  }
+  if (startIdx >= 0) {
+    const lastBrace = clean.lastIndexOf("}");
+    const lastBracket = clean.lastIndexOf("]");
+    const endIdx = Math.max(lastBrace, lastBracket);
+    if (endIdx > startIdx) {
+      clean = clean.substring(startIdx, endIdx + 1);
+    }
+  }
+  return clean.trim();
+};
+var runAiQuery = async (promptOrSystem, userPromptOrOptions, maybeJsonMode) => {
+  let prompt = promptOrSystem;
+  let isJsonMode = false;
+  if (typeof userPromptOrOptions === "string") {
+    prompt = `${promptOrSystem}
+
+${userPromptOrOptions}`;
+    isJsonMode = !!maybeJsonMode;
+  } else if (userPromptOrOptions && typeof userPromptOrOptions === "object") {
+    isJsonMode = !!userPromptOrOptions.jsonMode;
+  }
   const groqModels = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it"
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b"
   ];
   try {
     const client = getGroqClient();
@@ -42,19 +75,19 @@ var runAiQuery = async (prompt, options = {}) => {
           model,
           messages: [{ role: "user", content: prompt }],
           temperature: 0,
-          seed: 42,
-          response_format: options.jsonMode ? { type: "json_object" } : void 0
+          response_format: isJsonMode ? { type: "json_object" } : void 0,
+          max_tokens: 3500
         });
         const responseText = response.choices[0]?.message?.content || "";
         if (responseText) {
           console.log(`[AI Runner] Groq query succeeded with model: ${model}!`);
-          return responseText;
+          return isJsonMode ? extractJsonString(responseText) : responseText;
         }
       } catch (groqError) {
         const errMsg = groqError?.message || String(groqError);
         console.warn(`[AI Runner] Groq model ${model} failed (${errMsg}). Trying next model...`);
         if (groqError?.status === 429) {
-          await new Promise((resolve) => setTimeout(resolve, 1e3));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
       }
     }
@@ -65,7 +98,13 @@ var runAiQuery = async (prompt, options = {}) => {
     );
   }
   console.warn("[AI Runner] Falling back to Gemini models sequentially...");
-  const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+  const geminiModels = [
+    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.5-pro"
+  ];
   let lastGeminiError = null;
   for (const modelName of geminiModels) {
     let retries = 2;
@@ -80,7 +119,7 @@ var runAiQuery = async (prompt, options = {}) => {
         const geminiResponse = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
-          config: options.jsonMode ? {
+          config: isJsonMode ? {
             responseMimeType: "application/json",
             temperature: 0,
             seed: 42
@@ -93,7 +132,7 @@ var runAiQuery = async (prompt, options = {}) => {
           console.log(
             `[AI Runner] Gemini fallback succeeded with model ${modelName} on attempt ${attempt}!`
           );
-          return geminiResponse.text;
+          return isJsonMode ? extractJsonString(geminiResponse.text) : geminiResponse.text;
         }
       } catch (geminiError) {
         lastGeminiError = geminiError;
@@ -206,11 +245,8 @@ ${JSON.stringify(
       null,
       2
     ).slice(0, 25e3)}`;
-    let responseText = await runAiQuery(systemPrompt, userPrompt, true);
-    let cleanJson = responseText.trim();
-    if (cleanJson.startsWith("```")) {
-      cleanJson = cleanJson.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
+    const responseText = await runAiQuery(systemPrompt, userPrompt, true);
+    const cleanJson = extractJsonString(responseText);
     const result = JSON.parse(cleanJson);
     return res.status(200).json(result);
   } catch (err) {

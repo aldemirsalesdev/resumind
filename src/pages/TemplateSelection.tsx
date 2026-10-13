@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { ResumeA4Preview } from "../components/ResumeA4Preview";
 import { resumeSchema } from "../lib/resumeSchema";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 const TEMPLATES = [
   {
@@ -54,40 +55,112 @@ const TEMPLATES = [
   },
 ];
 
-const cleanUndefined = (obj: any): any => {
+const cleanUndefined = (obj: any, depth = 0, seen = new WeakSet()): any => {
   if (obj === null || typeof obj !== "object") return obj;
+  if (depth > 12 || seen.has(obj)) return undefined;
+  seen.add(obj);
   if (Array.isArray(obj)) {
-    return obj.map(cleanUndefined).filter(val => val !== undefined);
+    return obj
+      .map((item) => cleanUndefined(item, depth + 1, seen))
+      .filter((val) => val !== undefined);
   }
   const result: any = {};
   for (const key of Object.keys(obj)) {
     if (obj[key] !== undefined) {
-      result[key] = cleanUndefined(obj[key]);
+      const cleaned = cleanUndefined(obj[key], depth + 1, seen);
+      if (cleaned !== undefined) {
+        result[key] = cleaned;
+      }
     }
   }
   return result;
 };
 
-export default function TemplateSelection() {
+class ThumbnailErrorBoundary extends React.Component<
+  { children: React.ReactNode; templateName?: string },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn("Thumbnail preview error:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-[794px] h-[1123px] flex flex-col items-center justify-center bg-white text-slate-700 text-lg p-12 text-center select-none font-sans">
+          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4 text-orange-500 shadow-sm">
+            <LayoutTemplate size={32} />
+          </div>
+          <span className="font-bold text-2xl text-slate-900 mb-1">
+            {this.props.templateName || "Modelo ATS"}
+          </span>
+          <span className="text-sm text-slate-500">Modelo Selecionado</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function TemplateSelectionContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { extractedData: initialExtractedData } = location.state || {};
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>("harvard");
   const [loading, setLoading] = useState(false);
-  const [extractedData, setExtractedData] = useState<any>(
-    initialExtractedData || null,
-  );
+  const [extractedData, setExtractedData] = useState<any>(() => {
+    if (initialExtractedData) {
+      try {
+        sessionStorage.setItem(
+          "resumind_last_extracted",
+          JSON.stringify(initialExtractedData),
+        );
+      } catch (e) {}
+      return initialExtractedData;
+    }
+    try {
+      const stored = sessionStorage.getItem("resumind_last_extracted");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  });
   const [error, setError] = useState("");
 
   if (!extractedData) {
     return (
-      <div className="p-12 text-center text-neutral-400 font-medium flex flex-col items-center gap-4">
-        <AlertCircle size={32} className="text-slate-300" />
-        Nenhum dado extraído recebido. Por favor, faça o upload primeiro.
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+        <div className="p-8 max-w-md w-full border dark:border-neutral-800 border-slate-200 dark:bg-[#111111] bg-white rounded-2xl shadow-sm flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center">
+            <LayoutTemplate size={24} />
+          </div>
+          <h2 className="text-xl font-bold dark:text-white text-slate-900">
+            Nenhum currículo carregado
+          </h2>
+          <p className="text-sm dark:text-neutral-400 text-slate-500 leading-relaxed">
+            Para visualizar os modelos e gerar a versão otimizada para ATS, faça o envio do seu currículo.
+          </p>
+          <button
+            onClick={() => navigate("/analyze")}
+            className="mt-2 px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+          >
+            Fazer Upload de Currículo
+          </button>
+        </div>
       </div>
     );
   }
+
+  const atsScore = Number(extractedData?.atsAnalysis?.score ?? 70);
+  const atsFeedback = Array.isArray(extractedData?.atsAnalysis?.feedback)
+    ? extractedData.atsAnalysis.feedback
+    : [];
 
   const handleProcess = async () => {
     if (!auth.currentUser || !extractedData) return;
@@ -181,7 +254,7 @@ export default function TemplateSelection() {
               </h1>
 
               <div className="dark:text-neutral-400 text-slate-600 text-base leading-relaxed max-w-2xl flex flex-col gap-4 mt-2">
-                {extractedData.atsAnalysis.score >= 85 ? (
+                {atsScore >= 85 ? (
                   <div className="space-y-4">
                     <p>
                       <b className="text-emerald-500 text-lg">
@@ -199,7 +272,7 @@ export default function TemplateSelection() {
                       abaixo para apenas refinar pequenos detalhes.
                     </p>
                   </div>
-                ) : extractedData.atsAnalysis.score >= 80 ? (
+                ) : atsScore >= 80 ? (
                   <p>
                     <b className="text-orange-600">
                       O seu modelo original teve uma ótima leitura!
@@ -234,23 +307,23 @@ export default function TemplateSelection() {
                 <div
                   className={cn(
                     "text-6xl font-black leading-none",
-                    extractedData.atsAnalysis.score >= 80
+                    atsScore >= 80
                       ? "text-emerald-500"
-                      : extractedData.atsAnalysis.score >= 50
+                      : atsScore >= 50
                         ? "text-amber-500"
                         : "text-red-500",
                   )}
                 >
-                  {extractedData.atsAnalysis.score}
+                  {atsScore}
                 </div>
                 <div className="text-sm font-semibold dark:text-neutral-500 text-slate-400 pb-2 uppercase tracking-widest">
                   / 100
                 </div>
               </div>
               <div className="flex flex-col gap-3 mt-4 border-t dark:border-neutral-800 border-slate-200 pt-4">
-                {extractedData.atsAnalysis.feedback
+                {atsFeedback
                   .filter((fb: any) => {
-                    const msg = (fb.message || "").toLowerCase();
+                    const msg = (typeof fb === "string" ? fb : fb?.message || fb?.suggestion || "").toLowerCase();
                     return (
                       !msg.includes("string") &&
                       !msg.includes("array") &&
@@ -258,18 +331,21 @@ export default function TemplateSelection() {
                     );
                   })
                   .slice(0, 2)
-                  .map((fb: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="flex gap-2 text-xs dark:text-neutral-400 text-slate-500 items-start"
-                    >
-                      <AlertCircle
-                        size={14}
-                        className="mt-0.5 shrink-0 text-amber-500"
-                      />
-                      <span>{fb.message}</span>
-                    </div>
-                  ))}
+                  .map((fb: any, idx: number) => {
+                    const msg = typeof fb === "string" ? fb : fb?.message || fb?.suggestion || "";
+                    return (
+                      <div
+                        key={idx}
+                        className="flex gap-2 text-xs dark:text-neutral-400 text-slate-500 items-start"
+                      >
+                        <AlertCircle
+                          size={14}
+                          className="mt-0.5 shrink-0 text-amber-500"
+                        />
+                        <span>{msg}</span>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -314,19 +390,27 @@ export default function TemplateSelection() {
                     </div>
                   </div>
 
-                  {/* Pixel-perfect Thumbnail Scaling using SVG */}
-                  <div className="w-full aspect-[1/1.414] mt-2 border dark:border-neutral-800 border-slate-200 dark:bg-[#111111] bg-white pointer-events-none shadow-sm rounded-md overflow-hidden relative z-0">
-                    <svg viewBox="0 0 794 1123" className="w-full h-full">
+                  {/* Pixel-perfect Thumbnail Scaling using SVG with XHTML namespace */}
+                  <div className="w-full aspect-[1/1.414] mt-2 border dark:border-neutral-800 border-slate-200 bg-white pointer-events-none shadow-sm rounded-md overflow-hidden relative z-0">
+                    <svg viewBox="0 0 794 1123" className="w-full h-full block bg-white" xmlns="http://www.w3.org/2000/svg">
                       <foreignObject width="794" height="1123">
-                        <ResumeA4Preview
-                          data={extractedData}
-                          templateId={tpl.id}
-                        />
+                        <div
+                          {...({ xmlns: "http://www.w3.org/1999/xhtml" } as any)}
+                          style={{ width: "794px", height: "1123px", backgroundColor: "#ffffff", color: "#000000" }}
+                          className="bg-white text-black"
+                        >
+                          <ThumbnailErrorBoundary templateName={tpl.name}>
+                            <ResumeA4Preview
+                              data={extractedData}
+                              templateId={tpl.id}
+                            />
+                          </ThumbnailErrorBoundary>
+                        </div>
                       </foreignObject>
                     </svg>
 
-                    {/* Overlay to prevent interaction and fade out the bottom */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent dark:to-neutral-900/60 to-white/60"></div>
+                    {/* Subtle bottom fade overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/10 pointer-events-none"></div>
                   </div>
                 </button>
               ))}
@@ -379,5 +463,13 @@ export default function TemplateSelection() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TemplateSelection() {
+  return (
+    <ErrorBoundary name="TemplateSelection">
+      <TemplateSelectionContent />
+    </ErrorBoundary>
   );
 }

@@ -29,20 +29,57 @@ export const getGroqClient = () => {
   return new Groq({ apiKey: key });
 };
 
+// Resilient JSON string extractor that strips markdown or surrounding thoughts
+export const extractJsonString = (raw: string): string => {
+  if (!raw) return "";
+  let clean = raw.trim();
+  if (clean.startsWith("```")) {
+    clean = clean.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+  }
+  const firstBrace = clean.indexOf("{");
+  const firstBracket = clean.indexOf("[");
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    startIdx = firstBrace;
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+  }
+
+  if (startIdx >= 0) {
+    const lastBrace = clean.lastIndexOf("}");
+    const lastBracket = clean.lastIndexOf("]");
+    const endIdx = Math.max(lastBrace, lastBracket);
+    if (endIdx > startIdx) {
+      clean = clean.substring(startIdx, endIdx + 1);
+    }
+  }
+  return clean.trim();
+};
+
 // Resilient LLM runner helper with Groq as primary and Gemini as fallback
 export const runAiQuery = async (
-  prompt: string,
-  options: { jsonMode?: boolean } = {}
+  promptOrSystem: string,
+  userPromptOrOptions?: string | { jsonMode?: boolean },
+  maybeJsonMode?: boolean
 ) => {
-  // 1. Try Groq as the primary engine across supported models
+  let prompt = promptOrSystem;
+  let isJsonMode = false;
+
+  if (typeof userPromptOrOptions === "string") {
+    prompt = `${promptOrSystem}\n\n${userPromptOrOptions}`;
+    isJsonMode = !!maybeJsonMode;
+  } else if (userPromptOrOptions && typeof userPromptOrOptions === "object") {
+    isJsonMode = !!userPromptOrOptions.jsonMode;
+  }
+
+  // 1. Try Groq as the primary engine across currently active Groq models
   const groqModels = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it",
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
   ];
 
   try {
@@ -54,19 +91,19 @@ export const runAiQuery = async (
           model,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.0,
-          seed: 42,
-          response_format: options.jsonMode ? { type: "json_object" } : undefined,
+          response_format: isJsonMode ? { type: "json_object" } : undefined,
+          max_tokens: 3500,
         });
         const responseText = response.choices[0]?.message?.content || "";
         if (responseText) {
           console.log(`[AI Runner] Groq query succeeded with model: ${model}!`);
-          return responseText;
+          return isJsonMode ? extractJsonString(responseText) : responseText;
         }
       } catch (groqError: any) {
         const errMsg = groqError?.message || String(groqError);
         console.warn(`[AI Runner] Groq model ${model} failed (${errMsg}). Trying next model...`);
         if (groqError?.status === 429) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
       }
     }
@@ -77,9 +114,15 @@ export const runAiQuery = async (
     );
   }
 
-  // 2. Fallback to Gemini if Groq fails or is not configured
+  // 2. Fallback to active Gemini models sequentially
   console.warn("[AI Runner] Falling back to Gemini models sequentially...");
-  const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+  const geminiModels = [
+    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.5-pro",
+  ];
   let lastGeminiError: any = null;
 
   for (const modelName of geminiModels) {
@@ -95,7 +138,7 @@ export const runAiQuery = async (
         const geminiResponse = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
-          config: options.jsonMode
+          config: isJsonMode
             ? {
                 responseMimeType: "application/json",
                 temperature: 0.0,
@@ -110,7 +153,7 @@ export const runAiQuery = async (
           console.log(
             `[AI Runner] Gemini fallback succeeded with model ${modelName} on attempt ${attempt}!`
           );
-          return geminiResponse.text;
+          return isJsonMode ? extractJsonString(geminiResponse.text) : geminiResponse.text;
         }
       } catch (geminiError: any) {
         lastGeminiError = geminiError;

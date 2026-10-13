@@ -63,25 +63,95 @@ export const ResumeA4Preview = React.memo(function ResumeA4Preview({
     return `Portfólio: ${displayUrl}`;
   };
 
-  const rawPersonalInfo = (data.structuredData || data).personalInfo || {};
+  const toSafeString = (item: any, depth = 0, seen = new WeakSet()): string => {
+    if (item === null || item === undefined) return "";
+    if (typeof item === "string") return item.trim();
+    if (typeof item === "number" || typeof item === "boolean") return String(item);
+    if (depth > 6) return "";
+    if (typeof item === "object") {
+      if (seen.has(item)) return "";
+      seen.add(item);
+      if (Array.isArray(item)) {
+        return item
+          .map((i) => toSafeString(i, depth + 1, seen))
+          .filter(Boolean)
+          .join(", ");
+      }
+      if (item.name && item.category) return `${item.category}: ${item.name}`;
+      if (item.name) return String(item.name);
+      if (item.title) return String(item.title);
+      if (item.language && item.level) return `${item.language} - ${item.level}`;
+      if (item.language) return String(item.language);
+      if (item.skill) return String(item.skill);
+      if (item.text) return String(item.text);
+      try {
+        return Object.entries(item)
+          .slice(0, 15)
+          .map(([k, v]) => {
+            const valStr = toSafeString(v, depth + 1, seen);
+            return valStr ? `${k}: ${valStr}` : "";
+          })
+          .filter(Boolean)
+          .join(" | ");
+      } catch (e) {
+        return "";
+      }
+    }
+    return String(item);
+  };
+
+  const toSafeStringList = (raw: any): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.map((item) => toSafeString(item)).filter(Boolean);
+    }
+    if (typeof raw === "object") {
+      const list: string[] = [];
+      for (const [key, val] of Object.entries(raw)) {
+        if (Array.isArray(val)) {
+          list.push(`${key}: ${val.map((item) => toSafeString(item)).filter(Boolean).join(", ")}`);
+        } else if (typeof val === "object" && val !== null) {
+          list.push(`${key}: ${toSafeString(val)}`);
+        } else if (val) {
+          list.push(`${key}: ${String(val)}`);
+        }
+      }
+      return list.filter(Boolean);
+    }
+    if (typeof raw === "string") {
+      return raw.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const parsedData = (data && (data.structuredData || data)) || {};
+  const rawPersonalInfo = parsedData.personalInfo || {};
   const personalInfo = {
     ...rawPersonalInfo,
+    fullName: toSafeString(rawPersonalInfo.fullName),
+    email: toSafeString(rawPersonalInfo.email),
+    phone: toSafeString(rawPersonalInfo.phone),
+    location: toSafeString(rawPersonalInfo.location),
     linkedin: rawPersonalInfo.linkedin
-      ? formatLinkedinForPreview(rawPersonalInfo.linkedin)
+      ? formatLinkedinForPreview(toSafeString(rawPersonalInfo.linkedin))
       : "",
     github: rawPersonalInfo.github
-      ? formatGithubForPreview(rawPersonalInfo.github)
-      : (rawPersonalInfo.website?.toLowerCase().includes("github.com")
-          ? formatGithubForPreview(rawPersonalInfo.website)
+      ? formatGithubForPreview(toSafeString(rawPersonalInfo.github))
+      : (rawPersonalInfo.website && String(rawPersonalInfo.website).toLowerCase().includes("github.com")
+          ? formatGithubForPreview(toSafeString(rawPersonalInfo.website))
           : ""),
     website: rawPersonalInfo.website
-      ? (rawPersonalInfo.website?.toLowerCase().includes("github.com")
+      ? (String(rawPersonalInfo.website).toLowerCase().includes("github.com")
           ? ""
-          : formatWebsiteForPreview(rawPersonalInfo.website))
+          : formatWebsiteForPreview(toSafeString(rawPersonalInfo.website)))
       : "",
   };
-  const parsedData = data.structuredData || data || {};
-  const summary = typeof parsedData.summary === "string" ? parsedData.summary.trim() : (parsedData.summary ? parsedData.summary : "");
+
+  const summary = typeof parsedData.summary === "string" 
+    ? parsedData.summary.trim() 
+    : (typeof parsedData.summary === "object" && parsedData.summary 
+        ? toSafeString(parsedData.summary.text || parsedData.summary.summary || parsedData.summary) 
+        : "");
   const name = personalInfo?.fullName || "NOME DO CANDIDATO";
 
   const isNotEmpty = (obj: any) =>
@@ -92,23 +162,50 @@ export const ResumeA4Preview = React.memo(function ResumeA4Preview({
           (val) => val && typeof val === "string" && val.trim() !== "",
         ));
 
-  const experience = parsedData.experience?.filter(isNotEmpty) || [];
-  const education = (parsedData.education || [])
-    ?.filter(isNotEmpty)
+  const experience = (Array.isArray(parsedData.experience) ? parsedData.experience : [])
+    .filter(isNotEmpty)
+    .map((exp: any) => ({
+      ...exp,
+      company: toSafeString(exp.company),
+      position: toSafeString(exp.position),
+      startDate: toSafeString(exp.startDate),
+      endDate: toSafeString(exp.endDate),
+      description: exp.description,
+    }));
+
+  const education = (Array.isArray(parsedData.education) ? parsedData.education : [])
+    .filter(isNotEmpty)
     .map((edu: any) => {
-      const field = typeof edu.field === "string" ? edu.field.trim() : edu.field || "";
-      const degree = typeof edu.degree === "string" ? edu.degree.trim() : edu.degree || "";
+      const field = typeof edu.field === "string" ? edu.field.trim() : toSafeString(edu.field);
+      const degree = typeof edu.degree === "string" ? edu.degree.trim() : toSafeString(edu.degree);
+      const institution = toSafeString(edu.institution);
+      const graduationDate = toSafeString(edu.graduationDate);
       const isGeral = typeof field === "string" ? ["geral", "em geral", "general", "gerais"].includes(field.toLowerCase()) : false;
       const isSame = typeof degree === "string" && typeof field === "string" ? degree.toLowerCase() === field.toLowerCase() : false;
       return {
         ...edu,
-        field: isGeral || isSame ? "" : edu.field,
+        institution,
+        graduationDate,
+        degree,
+        field: isGeral || isSame ? "" : field,
       };
     });
-  const skills = parsedData.skills?.filter(isNotEmpty) || [];
-  const certifications = parsedData.certifications?.filter(isNotEmpty) || [];
-  const projects = parsedData.projects?.filter(isNotEmpty) || [];
-  const languages = parsedData.languages?.filter(isNotEmpty) || [];
+
+  const skills = toSafeStringList(parsedData.skills);
+  const certifications = (Array.isArray(parsedData.certifications) ? parsedData.certifications : [])
+    .filter(isNotEmpty);
+  const projects = (Array.isArray(parsedData.projects) ? parsedData.projects : [])
+    .filter(isNotEmpty)
+    .map((proj: any) => ({
+      ...proj,
+      name: toSafeString(proj.name),
+      link: toSafeString(proj.link),
+      technologies: Array.isArray(proj.technologies) 
+        ? proj.technologies.map(toSafeString).join(", ") 
+        : toSafeString(proj.technologies),
+      description: proj.description,
+    }));
+  const languages = toSafeStringList(parsedData.languages);
 
   const formatEduTitle = (degree: any, field: any) => {
     if (typeof degree === "string" && typeof field === "string") {
@@ -148,14 +245,15 @@ export const ResumeA4Preview = React.memo(function ResumeA4Preview({
 
   const parseCertificationLine = (cert: any) => {
     if (typeof cert === "object" && cert !== null) {
-      let main = cert.name || "";
-      if (cert.institution) {
-        main += main ? ` – ${cert.institution}` : cert.institution;
+      let main = cert.name || cert.title || cert.course || cert.curso || "";
+      const inst = cert.institution || cert.instituicao || cert.school || "";
+      if (inst) {
+        main += main ? ` – ${inst}` : inst;
       }
-      let date = cert.hours || null;
-      return { main, date };
+      let date = cert.hours || cert.horas || cert.date || cert.data || null;
+      return { main: toSafeString(main), date: date ? toSafeString(date) : null };
     }
-    const s = String(cert).trim();
+    const s = toSafeString(cert);
     // Try to find dashes
     const dashIndex = Math.max(
       s.lastIndexOf(" - "),

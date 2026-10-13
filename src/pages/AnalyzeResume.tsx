@@ -140,17 +140,22 @@ export default function AnalyzeResume() {
 
       // console.log("RAW TEXT:", text);
 
+      // Immediately kick off analysis without artificial pauses
       setCurrentStepIndex(1);
-      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      setCurrentStepIndex(2);
+      // Start step interval ticker so user sees continuous lively progress while AI processes
+      const stepTicker = setInterval(() => {
+        setCurrentStepIndex((prev) => (prev < 3 ? prev + 1 : prev));
+      }, 1200);
 
-      // Extract and structure data with Gemini
-      const result = await analyzeResume(text);
+      let result: any = null;
+      try {
+        result = await analyzeResume(text);
+      } finally {
+        clearInterval(stepTicker);
+      }
 
-      // console.log("PERSONAL INFO AFTER AI:", result?.structuredData?.personalInfo);
-
-      // --- Fallback Regex for Contacts (Client-Side) ---
+      // Fallback Regex for Contacts (Client-Side)
       const extractEmailFromRawText = (raw: string) => {
         const normalized = raw
           .replace(/\s*@\s*/g, '@')
@@ -178,9 +183,6 @@ export default function AnalyzeResume() {
       const foundEmail = extractEmailFromRawText(text);
       const foundPhone = extractPhoneFromRawText(text);
 
-      // console.log("EMAIL MATCHES:", foundEmail);
-      // console.log("PHONE MATCHES:", foundPhone);
-
       if (result && !result.structuredData) {
         result.structuredData = {};
       }
@@ -196,9 +198,6 @@ export default function AnalyzeResume() {
            result.structuredData.personalInfo.phone = foundPhone;
         }
       }
-      
-      // console.log("FINAL PERSONAL INFO SENT TO EDITOR:", result?.structuredData?.personalInfo);
-      // --- Fim Fallback Regex ---
 
       if (result && result.structuredData) {
          if (!result.atsAnalysis) result.atsAnalysis = {};
@@ -207,15 +206,15 @@ export default function AnalyzeResume() {
          result.atsAnalysis.feedback = calculatedScore.feedback;
       }
 
-      setCurrentStepIndex(3);
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Save to sessionStorage for resilience against reload or direct navigation
+      try {
+        sessionStorage.setItem("resumind_last_extracted", JSON.stringify(result));
+      } catch (e) {}
 
       // Complete all steps visually
       setCurrentStepIndex(loadingSteps.length);
 
-      setTimeout(() => {
-        navigate("/templates", { state: { extractedData: result } });
-      }, 600);
+      navigate("/templates", { state: { extractedData: result } });
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Erro durante a extração");

@@ -25,6 +25,7 @@ import ResetPassword from "./pages/ResetPassword";
 import FeedbackWidget from "./components/FeedbackWidget";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { cn } from "./lib/utils";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const adminEmail = (import.meta as any).env.VITE_ADMIN_EMAIL || "";
 
@@ -60,40 +61,42 @@ function AppLayout({ user }: { user: User | null }) {
           isEditor && "px-0 pb-0 lg:px-4 lg:pb-2",
         )}
       >
-        <Routes>
-          <Route path="/" element={<LandingPage user={user} />} />
-          <Route path="/index.html" element={<LandingPage user={user} />} />
-          <Route
-            path="/dashboard"
-            element={user ? <Dashboard /> : <LandingPage user={user} />}
-          />
-          <Route
-            path="/analyze"
-            element={user ? <AnalyzeResume /> : <LandingPage user={user} />}
-          />
-          <Route
-            path="/templates"
-            element={user ? <TemplateSelection /> : <LandingPage user={user} />}
-          />
-          <Route
-            path="/editor"
-            element={user ? <ResumeEditor /> : <LandingPage user={user} />}
-          />
-          <Route
-            path="/review"
-            element={user ? <ReviewResume /> : <LandingPage user={user} />}
-          />
-          <Route
-            path="/admin/feedbacks"
-            element={user && user.email === adminEmail ? <AdminFeedbacks /> : <LandingPage user={user} />}
-          />
-          <Route path="/termos" element={<TermsPage />} />
-          <Route path="/privacidade" element={<PrivacyPage />} />
-          <Route path="/redefinir-senha" element={<ResetPassword />} />
-          
-          {/* Wildcard fallback that renders LandingPage directly to prevent iframe navigation glitches */}
-          <Route path="*" element={<LandingPage user={user} />} />
-        </Routes>
+        <ErrorBoundary name="AppRoutes">
+          <Routes>
+            <Route path="/" element={<LandingPage user={user} />} />
+            <Route path="/index.html" element={<LandingPage user={user} />} />
+            <Route
+              path="/dashboard"
+              element={user ? <Dashboard /> : <LandingPage user={user} />}
+            />
+            <Route
+              path="/analyze"
+              element={user ? <AnalyzeResume /> : <LandingPage user={user} />}
+            />
+            <Route
+              path="/templates"
+              element={user ? <TemplateSelection /> : <LandingPage user={user} />}
+            />
+            <Route
+              path="/editor"
+              element={user ? <ResumeEditor /> : <LandingPage user={user} />}
+            />
+            <Route
+              path="/review"
+              element={user ? <ReviewResume /> : <LandingPage user={user} />}
+            />
+            <Route
+              path="/admin/feedbacks"
+              element={user && user.email === adminEmail ? <AdminFeedbacks /> : <LandingPage user={user} />}
+            />
+            <Route path="/termos" element={<TermsPage />} />
+            <Route path="/privacidade" element={<PrivacyPage />} />
+            <Route path="/redefinir-senha" element={<ResetPassword />} />
+            
+            {/* Wildcard fallback that renders LandingPage directly to prevent iframe navigation glitches */}
+            <Route path="*" element={<LandingPage user={user} />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
       {!isMarketing && !isEditor && (
         <footer className="w-full border-t dark:border-neutral-800 border-slate-200 dark:bg-[#0A0A0A] bg-slate-100 dark:text-neutral-500 text-slate-500 text-sm print:hidden">

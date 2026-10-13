@@ -8,11 +8,73 @@ interface StandardATSPreviewProps {
 export const StandardATSPreview = ({ data }: StandardATSPreviewProps) => {
   if (!data) return null;
 
-  const lang = detectLanguage(data);
+  const parsedData = (data && data.structuredData) || data || {};
+  const lang = detectLanguage(parsedData);
   const titles = sectionTitles[lang];
 
-  const rawPersonalInfo = data.personalInfo || {};
+  const rawPersonalInfo = parsedData.personalInfo || {};
   const name = rawPersonalInfo.fullName || "NOME DO CANDIDATO";
+
+  const toSafeString = (item: any, depth = 0, seen = new WeakSet()): string => {
+    if (item === null || item === undefined) return "";
+    if (typeof item === "string") return item.trim();
+    if (typeof item === "number" || typeof item === "boolean") return String(item);
+    if (depth > 6) return "";
+    if (typeof item === "object") {
+      if (seen.has(item)) return "";
+      seen.add(item);
+      if (Array.isArray(item)) {
+        return item
+          .map((i) => toSafeString(i, depth + 1, seen))
+          .filter(Boolean)
+          .join(", ");
+      }
+      if (item.name && item.category) return `${item.category}: ${item.name}`;
+      if (item.name) return String(item.name);
+      if (item.title) return String(item.title);
+      if (item.language && item.level) return `${item.language} - ${item.level}`;
+      if (item.language) return String(item.language);
+      if (item.skill) return String(item.skill);
+      if (item.text) return String(item.text);
+      try {
+        return Object.entries(item)
+          .slice(0, 15)
+          .map(([k, v]) => {
+            const valStr = toSafeString(v, depth + 1, seen);
+            return valStr ? `${k}: ${valStr}` : "";
+          })
+          .filter(Boolean)
+          .join(" | ");
+      } catch (e) {
+        return "";
+      }
+    }
+    return String(item);
+  };
+
+  const toSafeStringList = (raw: any): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.map((item) => toSafeString(item)).filter(Boolean);
+    }
+    if (typeof raw === "object") {
+      const list: string[] = [];
+      for (const [key, val] of Object.entries(raw)) {
+        if (Array.isArray(val)) {
+          list.push(`${key}: ${val.map((item) => toSafeString(item)).filter(Boolean).join(", ")}`);
+        } else if (typeof val === "object" && val !== null) {
+          list.push(`${key}: ${toSafeString(val)}`);
+        } else if (val) {
+          list.push(`${key}: ${String(val)}`);
+        }
+      }
+      return list.filter(Boolean);
+    }
+    if (typeof raw === "string") {
+      return raw.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
 
   const isNotEmpty = (obj: any) =>
     obj &&
@@ -146,25 +208,53 @@ export const StandardATSPreview = ({ data }: StandardATSPreviewProps) => {
       : "",
   };
 
-  const summary = typeof data.summary === "string" ? data.summary.trim() : "";
-  const experience = (data.experience || []).filter(isNotEmpty);
-  const education = (data.education || [])
+  const summary = typeof parsedData.summary === "string" 
+    ? parsedData.summary.trim() 
+    : (typeof parsedData.summary === "object" && parsedData.summary 
+        ? toSafeString(parsedData.summary.text || parsedData.summary.summary || parsedData.summary) 
+        : "");
+  const experience = (Array.isArray(parsedData.experience) ? parsedData.experience : [])
+    .filter(isNotEmpty)
+    .map((exp: any) => ({
+      ...exp,
+      company: toSafeString(exp.company),
+      position: toSafeString(exp.position),
+      startDate: toSafeString(exp.startDate),
+      endDate: toSafeString(exp.endDate),
+      description: exp.description,
+    }));
+  const education = (Array.isArray(parsedData.education) ? parsedData.education : [])
     .filter(isNotEmpty)
     .map((edu: any) => {
-      const field = typeof edu.field === "string" ? edu.field.trim() : edu.field || "";
-      const degree = typeof edu.degree === "string" ? edu.degree.trim() : edu.degree || "";
+      const field = typeof edu.field === "string" ? edu.field.trim() : toSafeString(edu.field);
+      const degree = typeof edu.degree === "string" ? edu.degree.trim() : toSafeString(edu.degree);
+      const institution = toSafeString(edu.institution);
+      const graduationDate = toSafeString(edu.graduationDate);
       const isGeral = typeof field === "string" ? ["geral", "em geral", "general", "gerais"].includes(field.toLowerCase()) : false;
       const isSame = typeof degree === "string" && typeof field === "string" ? degree.toLowerCase() === field.toLowerCase() : false;
       return {
         ...edu,
-        field: isGeral || isSame ? "" : edu.field,
+        institution,
+        graduationDate,
+        degree,
+        field: isGeral || isSame ? "" : field,
       };
     });
 
-  const skills = (data.skills || []).filter(isNotEmpty);
-  const certifications = (data.certifications || []).filter(isNotEmpty);
-  const projects = (data.projects || []).filter(isNotEmpty);
-  const languages = (data.languages || []).filter(isNotEmpty);
+  const skills = toSafeStringList(parsedData.skills);
+  const certifications = (Array.isArray(parsedData.certifications) ? parsedData.certifications : []).filter(isNotEmpty);
+  const projects = (Array.isArray(parsedData.projects) ? parsedData.projects : [])
+    .filter(isNotEmpty)
+    .map((proj: any) => ({
+      ...proj,
+      name: toSafeString(proj.name),
+      link: toSafeString(proj.link),
+      technologies: Array.isArray(proj.technologies) 
+        ? proj.technologies.map(toSafeString).join(", ") 
+        : toSafeString(proj.technologies),
+      description: proj.description,
+    }));
+  const languages = toSafeStringList(parsedData.languages);
 
   // Group and format contact items into elegant lines
   const getContactLines = () => {

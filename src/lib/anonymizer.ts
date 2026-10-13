@@ -39,15 +39,25 @@ export function deanonymizeText(text: string, mappings: Record<string, string>):
   return result;
 }
 
-export function deanonymizeObject(obj: any, mappings: Record<string, string>): any {
+export function deanonymizeObject(
+  obj: any,
+  mappings: Record<string, string>,
+  depth = 0,
+  seen = new WeakSet()
+): any {
+  if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'string') {
     return deanonymizeText(obj, mappings);
-  } else if (Array.isArray(obj)) {
-    return obj.map(item => deanonymizeObject(item, mappings));
-  } else if (typeof obj === 'object' && obj !== null) {
+  }
+  if (depth > 12 || (typeof obj === 'object' && seen.has(obj))) return obj;
+  if (typeof obj === 'object') {
+    seen.add(obj);
+    if (Array.isArray(obj)) {
+      return obj.map((item) => deanonymizeObject(item, mappings, depth + 1, seen));
+    }
     const newObj: any = {};
     for (const key in obj) {
-      newObj[key] = deanonymizeObject(obj[key], mappings);
+      newObj[key] = deanonymizeObject(obj[key], mappings, depth + 1, seen);
     }
     return newObj;
   }
@@ -55,7 +65,12 @@ export function deanonymizeObject(obj: any, mappings: Record<string, string>): a
 }
 
 export function anonymizeStructuredData(data: any): { maskedData: any, mappings: Record<string, string> } {
-  const maskedData = JSON.parse(JSON.stringify(data));
+  let maskedData: any = {};
+  try {
+    maskedData = JSON.parse(JSON.stringify(data || {}));
+  } catch (e) {
+    maskedData = { ...(data || {}) };
+  }
   let mappings: Record<string, string> = {};
 
   const replaceValue = (obj: any, key: string, type: string) => {
@@ -74,17 +89,22 @@ export function anonymizeStructuredData(data: any): { maskedData: any, mappings:
   }
 
   // Also apply deep text masking
-  function traverse(item: any): any {
+  function traverse(item: any, depth = 0, seen = new WeakSet()): any {
+    if (item === null || item === undefined) return item;
     if (typeof item === 'string') {
       const { maskedText, mappings: textMappings } = anonymizeText(item);
       mappings = { ...mappings, ...textMappings };
       return maskedText;
-    } else if (Array.isArray(item)) {
-      return item.map(i => traverse(i));
-    } else if (typeof item === 'object' && item !== null) {
+    }
+    if (depth > 12 || (typeof item === 'object' && seen.has(item))) return item;
+    if (typeof item === 'object') {
+      seen.add(item);
+      if (Array.isArray(item)) {
+        return item.map((i) => traverse(i, depth + 1, seen));
+      }
       const newObj: any = {};
       for (const key in item) {
-        newObj[key] = traverse(item[key]);
+        newObj[key] = traverse(item[key], depth + 1, seen);
       }
       return newObj;
     }

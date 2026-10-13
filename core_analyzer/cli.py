@@ -5,9 +5,13 @@ Outputs structured metrics, ATS score estimation, and suggestions as JSON.
 """
 
 import sys
+import os
 import json
 import argparse
 from typing import Dict, Any
+
+# Ensure core_analyzer directory is in sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from skills_matrix import scan_skills, calculate_impact_score
 from text_metrics import generate_text_diagnostics

@@ -23,16 +23,36 @@ export default async function handler(req: any, res: any) {
   try {
     const groq = getGroqClient();
     const start = Date.now();
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: "Ping" }],
-      model: "llama-3.1-8b-instant",
-      max_tokens: 5,
-    });
-    results.services.groq = {
-      status: "online",
-      latencyMs: Date.now() - start,
-      reply: completion.choices[0]?.message?.content?.trim(),
-    };
+    const groqCandidates = ["qwen/qwen3.8-27b", "groq/compound-mini", "groq/compound"];
+    let reply = "";
+    let activeModel = "";
+    for (const model of groqCandidates) {
+      try {
+        const completion = await groq.chat.completions.create({
+          messages: [{ role: "user", content: "Ping" }],
+          model,
+          max_tokens: 5,
+        });
+        reply = completion.choices[0]?.message?.content?.trim() || "";
+        activeModel = model;
+        if (reply) break;
+      } catch {
+        continue;
+      }
+    }
+    if (activeModel) {
+      results.services.groq = {
+        status: "online",
+        model: activeModel,
+        latencyMs: Date.now() - start,
+        reply,
+      };
+    } else {
+      results.services.groq = {
+        status: "offline",
+        error: "Nenhum modelo Groq ativo respondeu",
+      };
+    }
   } catch (e: any) {
     results.services.groq = {
       status: "offline",
@@ -44,15 +64,35 @@ export default async function handler(req: any, res: any) {
   try {
     const gemini = getGeminiClient();
     const start = Date.now();
-    const response = await gemini.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "Ping",
-    });
-    results.services.gemini = {
-      status: "online",
-      latencyMs: Date.now() - start,
-      reply: response.text?.trim(),
-    };
+    const geminiCandidates = ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"];
+    let reply = "";
+    let activeModel = "";
+    for (const model of geminiCandidates) {
+      try {
+        const response = await gemini.models.generateContent({
+          model,
+          contents: "Ping",
+        });
+        reply = response.text?.trim() || "";
+        activeModel = model;
+        if (reply) break;
+      } catch {
+        continue;
+      }
+    }
+    if (activeModel) {
+      results.services.gemini = {
+        status: "online",
+        model: activeModel,
+        latencyMs: Date.now() - start,
+        reply,
+      };
+    } else {
+      results.services.gemini = {
+        status: "offline",
+        error: "Nenhum modelo Gemini ativo respondeu",
+      };
+    }
   } catch (e: any) {
     results.services.gemini = {
       status: "offline",

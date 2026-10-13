@@ -166,46 +166,37 @@ async function handler(req, res) {
       try {
         const client = getGeminiClient();
         let response;
-        try {
-          response = await client.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimetype
+        const ocrModels = [
+          "gemini-3.1-flash-lite",
+          "gemini-3.8-flash",
+          "gemini-flash-latest",
+          "gemini-2.5-flash"
+        ];
+        for (const model of ocrModels) {
+          try {
+            response = await client.models.generateContent({
+              model,
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      inlineData: {
+                        data: base64Data,
+                        mimeType: mimetype
+                      }
+                    },
+                    {
+                      text: "Voc\xEA \xE9 um extrator OCR especializado em curr\xEDculos profissionais. Transcreva todo o conte\xFAdo textual leg\xEDvel deste documento de forma fiel, preservando a ordem das se\xE7\xF5es e informa\xE7\xF5es de contato. Retorne APENAS o texto puro transcrito, sem introdu\xE7\xF5es ou coment\xE1rios."
                     }
-                  },
-                  {
-                    text: "Voc\xEA \xE9 um extrator OCR especializado em curr\xEDculos profissionais. Transcreva todo o conte\xFAdo textual leg\xEDvel deste documento de forma fiel, preservando a ordem das se\xE7\xF5es e informa\xE7\xF5es de contato. Retorne APENAS o texto puro transcrito, sem introdu\xE7\xF5es ou coment\xE1rios."
-                  }
-                ]
-              }
-            ]
-          });
-        } catch (flashErr) {
-          response = await client.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimetype
-                    }
-                  },
-                  {
-                    text: "Extraia todo o texto deste curr\xEDculo exatamente como escrito."
-                  }
-                ]
-              }
-            ]
-          });
+                  ]
+                }
+              ]
+            });
+            if (response && response.text) break;
+          } catch (modelErr) {
+            console.warn(`[OCR] Model ${model} failed:`, modelErr?.message);
+          }
         }
         if (response && response.text) {
           textStripped = response.text.replace(/\0/g, "").trim();

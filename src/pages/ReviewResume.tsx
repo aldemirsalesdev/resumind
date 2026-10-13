@@ -50,15 +50,22 @@ interface DocxBlobContext {
   format?: "docx";
 }
 
-const cleanUndefined = (obj: any): any => {
+const cleanUndefined = (obj: any, depth = 0, seen = new WeakSet()): any => {
   if (obj === null || typeof obj !== "object") return obj;
+  if (depth > 12 || seen.has(obj)) return undefined;
+  seen.add(obj);
   if (Array.isArray(obj)) {
-    return obj.map(cleanUndefined).filter(val => val !== undefined);
+    return obj
+      .map((item) => cleanUndefined(item, depth + 1, seen))
+      .filter((val) => val !== undefined);
   }
   const result: any = {};
   for (const key of Object.keys(obj)) {
     if (obj[key] !== undefined) {
-      result[key] = cleanUndefined(obj[key]);
+      const cleaned = cleanUndefined(obj[key], depth + 1, seen);
+      if (cleaned !== undefined) {
+        result[key] = cleaned;
+      }
     }
   }
   return result;

@@ -347,17 +347,56 @@ app.get("/__/auth/:file?", (req, res, next) => {
     return new Groq({ apiKey: key });
   };
 
+  const extractJsonString = (raw: string): string => {
+    if (!raw) return "";
+    let clean = raw.trim();
+    if (clean.startsWith("```")) {
+      clean = clean.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+    const firstBrace = clean.indexOf("{");
+    const firstBracket = clean.indexOf("[");
+    let startIdx = -1;
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      startIdx = Math.min(firstBrace, firstBracket);
+    } else if (firstBrace !== -1) {
+      startIdx = firstBrace;
+    } else if (firstBracket !== -1) {
+      startIdx = firstBracket;
+    }
+
+    if (startIdx >= 0) {
+      const lastBrace = clean.lastIndexOf("}");
+      const lastBracket = clean.lastIndexOf("]");
+      const endIdx = Math.max(lastBrace, lastBracket);
+      if (endIdx > startIdx) {
+        clean = clean.substring(startIdx, endIdx + 1);
+      }
+    }
+    return clean.trim();
+  };
+
   // Resilient LLM runner helper with Groq as primary and Gemini as fallback
-  const runAiQuery = async (prompt: string, options: { jsonMode?: boolean } = {}) => {
-    // 1. Try Groq as the primary engine across supported models
+  const runAiQuery = async (
+    promptOrSystem: string,
+    userPromptOrOptions?: string | { jsonMode?: boolean },
+    maybeJsonMode?: boolean
+  ) => {
+    let prompt = promptOrSystem;
+    let isJsonMode = false;
+
+    if (typeof userPromptOrOptions === "string") {
+      prompt = `${promptOrSystem}\n\n${userPromptOrOptions}`;
+      isJsonMode = !!maybeJsonMode;
+    } else if (userPromptOrOptions && typeof userPromptOrOptions === "object") {
+      isJsonMode = !!userPromptOrOptions.jsonMode;
+    }
+
+    // 1. Try Groq as the primary engine across active models
     const groqModels = [
-      "llama-3.3-70b-versatile",
-      "llama-3.1-70b-versatile",
-      "llama-3.1-8b-instant",
-      "llama3-70b-8192",
-      "llama3-8b-8192",
-      "mixtral-8x7b-32768",
-      "gemma2-9b-it",
+      "qwen/qwen3.8-27b",
+      "qwen/qwen3.6-27b",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
     ];
 
     try {
@@ -369,20 +408,20 @@ app.get("/__/auth/:file?", (req, res, next) => {
             model,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.0,
-            seed: 42,
-            response_format: options.jsonMode ? { type: "json_object" } : undefined,
+            response_format: isJsonMode ? { type: "json_object" } : undefined,
+            max_tokens: 3500,
           });
           const responseText = response.choices[0]?.message?.content || "";
           if (responseText) {
             console.log(`[AI Runner] Groq query succeeded with model: ${model}!`);
-            return responseText;
+            return isJsonMode ? extractJsonString(responseText) : responseText;
           }
         } catch (groqError: any) {
           const errMsg = groqError?.message || String(groqError);
           console.warn(`[AI Runner] Groq model ${model} failed (${errMsg}). Trying next model...`);
           // If it's not a model availability error (e.g. rate limit), short pause
           if (groqError?.status === 429) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 300));
           }
         }
       }
@@ -392,7 +431,13 @@ app.get("/__/auth/:file?", (req, res, next) => {
 
     // 2. Fallback to Gemini if Groq fails or is not configured
     console.warn("[AI Runner] Falling back to Gemini models sequentially...");
-    const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+    const geminiModels = [
+      "gemini-2.5-flash",
+      "gemini-3.8-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-flash-latest",
+      "gemini-2.5-pro",
+    ];
     let lastGeminiError: any = null;
 
     for (const modelName of geminiModels) {
@@ -406,7 +451,7 @@ app.get("/__/auth/:file?", (req, res, next) => {
           const geminiResponse = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
-            config: options.jsonMode ? {
+            config: isJsonMode ? {
               responseMimeType: "application/json",
               temperature: 0.0,
               seed: 42,
@@ -417,7 +462,7 @@ app.get("/__/auth/:file?", (req, res, next) => {
           });
           if (geminiResponse.text) {
             console.log(`[AI Runner] Gemini fallback succeeded with model ${modelName} on attempt ${attempt}!`);
-            return geminiResponse.text;
+            return isJsonMode ? extractJsonString(geminiResponse.text) : geminiResponse.text;
           }
         } catch (geminiError: any) {
           lastGeminiError = geminiError;
@@ -550,39 +595,36 @@ app.get("/__/auth/:file?", (req, res, next) => {
         try {
           const client = getGeminiClient();
           let response;
-          try {
-            response = await client.models.generateContent({
-              model: "gemini-2.5-flash",
-              contents: [
-                {
-                  inlineData: {
-                    data: base64Str,
-                    mimeType: mimetype,
+          const ocrModels = [
+            "gemini-3.1-flash-lite",
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+            "gemini-2.5-flash",
+          ];
+
+          for (const model of ocrModels) {
+            try {
+              response = await client.models.generateContent({
+                model,
+                contents: [
+                  {
+                    inlineData: {
+                      data: base64Str,
+                      mimeType: mimetype,
+                    },
                   },
-                },
-                "Extraia todo o texto contido neste documento legível. Mantenha a formatação original tanto quanto possível. Se não houver texto legível, retorne uma string vazia.",
-              ],
-              config: { temperature: 0.0 },
-            });
-          } catch (firstTryError) {
-            console.warn("OCR fallback with gemini-2.5-flash failed, trying gemini-1.5-flash...", firstTryError);
-            response = await client.models.generateContent({
-              model: "gemini-1.5-flash",
-              contents: [
-                {
-                  inlineData: {
-                    data: base64Str,
-                    mimeType: mimetype,
-                  },
-                },
-                "Extraia todo o texto contido neste documento legível. Mantenha a formatação original tanto quanto possível. Se não houver texto legível, retorne uma string vazia.",
-              ],
-              config: { temperature: 0.0 },
-            });
+                  "Extraia todo o texto contido neste documento legível. Mantenha a formatação original tanto quanto possível. Se não houver texto legível, retorne uma string vazia.",
+                ],
+                config: { temperature: 0.0 },
+              });
+              if (response && response.text) break;
+            } catch (modelErr: any) {
+              console.warn(`[OCR] Model ${model} failed:`, modelErr?.message);
+            }
           }
-          textStripped = (response.text || "").trim();
+          textStripped = (response?.text || "").trim();
         } catch (fallbackError) {
-          console.error("Gemini OCR fallback failed on both models", fallbackError);
+          console.error("Gemini OCR fallback failed on all models", fallbackError);
         }
       }
 
@@ -1147,13 +1189,10 @@ ${JSON.stringify(structuredData)}`;
         const client = getGroqClient();
         const start = Date.now();
         const groqModels = [
-          "llama-3.3-70b-versatile",
-          "llama-3.1-70b-versatile",
-          "llama-3.1-8b-instant",
-          "llama3-70b-8192",
-          "llama3-8b-8192",
-          "mixtral-8x7b-32768",
-          "gemma2-9b-it",
+          "qwen/qwen3.8-27b",
+          "groq/compound-mini",
+          "groq/compound",
+          "qwen/qwen3.6-27b",
         ];
         let workingModel = "";
         let testResponse = "";
@@ -1209,16 +1248,43 @@ ${JSON.stringify(structuredData)}`;
       } else {
         const client = getGeminiClient();
         const start = Date.now();
-        const response = await client.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: "responder com apenas um caractere: G",
-        });
+        const geminiCandidates = [
+          "gemini-3.1-flash-lite",
+          "gemini-3.8-flash",
+          "gemini-flash-latest",
+          "gemini-2.5-flash",
+        ];
+        let workingGemini = "";
+        let testResponse = "";
+
+        for (const model of geminiCandidates) {
+          try {
+            const response = await client.models.generateContent({
+              model,
+              contents: "responder com apenas um caractere: G",
+            });
+            testResponse = response.text?.trim() || "";
+            workingGemini = model;
+            break;
+          } catch {
+            continue;
+          }
+        }
+
         const duration = Date.now() - start;
-        results.gemini = {
-          status: "online",
-          message: `API Gemini está ativa e respondendo! Latência: ${duration}ms.`,
-          response: response.text?.trim(),
-        };
+        if (workingGemini) {
+          results.gemini = {
+            status: "online",
+            message: `API Gemini está ativa e respondendo via ${workingGemini}! Latência: ${duration}ms.`,
+            response: testResponse,
+            activeModel: workingGemini,
+          };
+        } else {
+          results.gemini = {
+            status: "error",
+            message: "Nenhum modelo Gemini compatível respondeu com a chave fornecida.",
+          };
+        }
       }
     } catch (e: any) {
       results.gemini = {

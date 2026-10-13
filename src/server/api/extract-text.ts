@@ -85,46 +85,38 @@ export default async function handler(req: any, res: any) {
       try {
         const client = getGeminiClient();
         let response;
-        try {
-          response = await client.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimetype,
+        const ocrModels = [
+          "gemini-3.1-flash-lite",
+          "gemini-3.8-flash",
+          "gemini-flash-latest",
+          "gemini-2.5-flash",
+        ];
+
+        for (const model of ocrModels) {
+          try {
+            response = await client.models.generateContent({
+              model,
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      inlineData: {
+                        data: base64Data,
+                        mimeType: mimetype,
+                      },
                     },
-                  },
-                  {
-                    text: "Você é um extrator OCR especializado em currículos profissionais. Transcreva todo o conteúdo textual legível deste documento de forma fiel, preservando a ordem das seções e informações de contato. Retorne APENAS o texto puro transcrito, sem introduções ou comentários.",
-                  },
-                ],
-              },
-            ],
-          });
-        } catch (flashErr) {
-          response = await client.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimetype,
+                    {
+                      text: "Você é um extrator OCR especializado em currículos profissionais. Transcreva todo o conteúdo textual legível deste documento de forma fiel, preservando a ordem das seções e informações de contato. Retorne APENAS o texto puro transcrito, sem introduções ou comentários.",
                     },
-                  },
-                  {
-                    text: "Extraia todo o texto deste currículo exatamente como escrito.",
-                  },
-                ],
-              },
-            ],
-          });
+                  ],
+                },
+              ],
+            });
+            if (response && response.text) break;
+          } catch (modelErr: any) {
+            console.warn(`[OCR] Model ${model} failed:`, modelErr?.message);
+          }
         }
 
         if (response && response.text) {

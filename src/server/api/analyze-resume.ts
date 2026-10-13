@@ -2,6 +2,7 @@ import { calculateAtsScore } from "../../lib/atsScore";
 import {
   applyCors,
   extractEmailFromRawText,
+  extractJsonString,
   extractPhoneFromRawText,
   parseRequestBody,
   runAiQuery,
@@ -124,10 +125,7 @@ Retorne exclusivamente o JSON, sem formatação markdown em torno do texto.`;
 
     try {
       const aiResponse = await runAiQuery(systemPrompt, userPrompt, true);
-      let cleanJson = aiResponse.trim();
-      if (cleanJson.startsWith("```")) {
-        cleanJson = cleanJson.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-      }
+      const cleanJson = extractJsonString(aiResponse);
       parsedResult = JSON.parse(cleanJson);
     } catch (aiError: any) {
       console.warn("AI LLM analysis failed, attempting Python/deterministic fallback:", aiError?.message);
