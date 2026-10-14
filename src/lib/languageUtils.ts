@@ -15,31 +15,38 @@ export function detectLanguage(data: any): "pt-BR" | "en-US" {
   
   if (Array.isArray(data.experience)) {
     data.experience.forEach((exp: any) => {
-      if (exp.position) text += " " + exp.position;
-      if (exp.company) text += " " + exp.company;
-      if (exp.description) text += " " + exp.description;
+      if (exp && typeof exp === "object") {
+        if (exp.position) text += " " + exp.position;
+        if (exp.company) text += " " + exp.company;
+        if (exp.description) text += " " + exp.description;
+      }
     });
   }
   
   if (Array.isArray(data.education)) {
     data.education.forEach((edu: any) => {
-      if (edu.institution) text += " " + edu.institution;
-      if (edu.degree) text += " " + edu.degree;
-      if (edu.field) text += " " + edu.field;
+      if (edu && typeof edu === "object") {
+        if (edu.institution) text += " " + edu.institution;
+        if (edu.degree) text += " " + edu.degree;
+        if (edu.field) text += " " + edu.field;
+      }
     });
   }
   
   if (Array.isArray(data.projects)) {
     data.projects.forEach((proj: any) => {
-      if (proj.name) text += " " + proj.name;
-      if (proj.description) text += " " + proj.description;
-      if (proj.technologies) text += " " + proj.technologies;
+      if (proj && typeof proj === "object") {
+        if (proj.name) text += " " + proj.name;
+        if (proj.description) text += " " + proj.description;
+        if (proj.technologies) text += " " + proj.technologies;
+      }
     });
   }
   
   if (Array.isArray(data.skills)) {
     data.skills.forEach((skill: any) => {
       if (typeof skill === "string") text += " " + skill;
+      else if (skill && typeof skill === "object" && skill.name) text += " " + skill.name;
     });
   }
   
@@ -57,6 +64,7 @@ export function detectLanguage(data: any): "pt-BR" | "en-US" {
   if (Array.isArray(data.languages)) {
     data.languages.forEach((lang: any) => {
       if (typeof lang === "string") text += " " + lang;
+      else if (lang && typeof lang === "object" && (lang.name || lang.language)) text += " " + (lang.name || lang.language);
     });
   }
   

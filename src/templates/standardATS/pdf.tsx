@@ -126,10 +126,18 @@ export const TemplatePdfDocument = ({ data, templateId = "standard" }: TemplateP
       };
     });
 
-  const skills = (data.skills || []).filter(isNotEmpty);
+  const skills = (data.skills || [])
+    .filter(Boolean)
+    .map((s: any) => (typeof s === "string" ? s.trim() : (s?.name || String(s)).trim()))
+    .filter(Boolean);
+
   const certifications = (data.certifications || []).filter(isNotEmpty);
   const projects = (data.projects || []).filter(isNotEmpty);
-  const languages = (data.languages || []).filter(isNotEmpty);
+
+  const languages = (data.languages || [])
+    .filter(Boolean)
+    .map((l: any) => (typeof l === "string" ? l.trim() : (l?.name || l?.language || String(l)).trim()))
+    .filter(Boolean);
 
   // Group and format contact items into elegant lines
   const getContactLines = () => {

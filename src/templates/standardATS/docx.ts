@@ -45,10 +45,18 @@ export const generateStandardATSDocx = async (structured: any, templateId = "sta
       };
     });
 
-  const skills = (structured.skills || []).filter(isNotEmpty);
+  const skills = (structured.skills || [])
+    .filter(Boolean)
+    .map((s: any) => (typeof s === "string" ? s.trim() : (s?.name || s?.skill || String(s)).trim()))
+    .filter(Boolean);
+
   const projects = (structured.projects || []).filter(isNotEmpty);
   const certifications = (structured.certifications || []).filter(isNotEmpty);
-  const languages = (structured.languages || []).filter(isNotEmpty);
+
+  const languages = (structured.languages || [])
+    .filter(Boolean)
+    .map((l: any) => (typeof l === "string" ? l.trim() : (l?.name || l?.language || String(l)).trim()))
+    .filter(Boolean);
 
   // Formatar o LinkedIn para um padrão limpo
   const formatLinkedinForDocx = (linkedin: string) => {
