@@ -156,15 +156,9 @@ export const AutoScaledPreview = React.memo(function AutoScaledPreview({
   const parsedData = dataString ? JSON.parse(dataString) : {};
   const resumeData = parsedData?.structuredData || parsedData || {};
 
-  if (error) {
-    return (
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-[850px] h-[600px] flex flex-col items-center justify-center border border-dashed border-red-300 dark:border-red-900 rounded-xl bg-red-50/50 dark:bg-red-950/20 p-6 text-center gap-2">
-          <span className="text-red-500 font-medium text-sm">{error}</span>
-        </div>
-      </div>
-    );
-  }
+  // We always render the interactive HTML/DOM resume preview.
+  // PDF Blob generation happens in the background purely for pre-caching the export download.
+
 
   return (
     <div className="w-full relative flex flex-col items-center gap-4">
